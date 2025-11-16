@@ -112,7 +112,7 @@ check_requirements() {
 install_dependencies() {
     print_header "Installing System Dependencies"
 
-    if [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]]; then
+    if [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]] || [[ "$OS" == "sangoma" ]]; then
         install_dependencies_centos
     elif [[ "$OS" == "ubuntu" ]] || [[ "$OS" == "debian" ]]; then
         install_dependencies_debian
