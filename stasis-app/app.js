@@ -90,14 +90,38 @@ async function loadActiveCampaigns() {
       ['running']
     );
 
+    // Get IDs of campaigns that should be running
+    const runningCampaignIds = new Set(campaigns.map(c => c.id));
+
+    // Stop campaigns that are no longer running
+    for (const [campaignId, campaign] of activeCampaigns.entries()) {
+      if (!runningCampaignIds.has(campaignId)) {
+        logger.info(`Campaign ${campaignId} is no longer running - stopping it`);
+        stopCampaign(campaignId);
+      }
+    }
+
+    // Start or update running campaigns
     for (const campaign of campaigns) {
       if (!activeCampaigns.has(campaign.id)) {
+        // New campaign - add it and start processing
+        logger.info(`New campaign ${campaign.id} detected - starting it`);
         activeCampaigns.set(campaign.id, {
           ...campaign,
           currentCalls: 0,
           processInterval: null
         });
         startCampaign(campaign.id);
+      } else {
+        // Existing campaign - update its data (settings may have changed)
+        const existing = activeCampaigns.get(campaign.id);
+        // Preserve runtime state but update campaign settings
+        activeCampaigns.set(campaign.id, {
+          ...campaign,
+          currentCalls: existing.currentCalls,
+          processInterval: existing.processInterval
+        });
+        logger.debug(`Updated campaign ${campaign.id} data`);
       }
     }
 
@@ -584,6 +608,36 @@ async function executeIVRAction(channel, callInfo, action, actions) {
 
       case 'hangup':
         channel.hangup();
+        break;
+
+      case 'queue':
+        // Connect to queue using LOCAL/${queue}@from-internal
+        const queueNumber = action.action_value;
+        const queueEndpoint = `LOCAL/${queueNumber}@from-internal`;
+
+        logger.info(`ARI POST /bridges - Creating bridge for IVR queue transfer`);
+        const queueBridge = ariClient.Bridge();
+        await queueBridge.create({ type: 'mixing' });
+        await queueBridge.addChannel({ channel: channel.id });
+
+        // Format caller ID with customer's phone number
+        const queueCallerIdName = `Customer ${callInfo.phoneNumber}`;
+        const queueCallerIdFull = `"${queueCallerIdName}" <${callInfo.phoneNumber}>`;
+
+        logger.info(`ARI POST /channels - Originating to queue ${queueNumber} via ${queueEndpoint}`);
+        logger.info(`Setting Caller ID: ${queueCallerIdFull}`);
+
+        const queueChannel = ariClient.Channel();
+        await queueChannel.originate({
+          endpoint: queueEndpoint,
+          app: config.ari.app,
+          channelId: `ivr-queue-${Date.now()}`,
+          callerId: queueCallerIdFull
+        });
+
+        logger.info(`ARI RESPONSE: Queue channel originated successfully`);
+        await queueBridge.addChannel({ channel: queueChannel.id });
+        logger.info(`Queue channel added to bridge`);
         break;
 
       case 'playback':

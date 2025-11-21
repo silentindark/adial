@@ -407,25 +407,40 @@ sudo systemctl restart apache2
 # Navigate to stasis app directory
 cd /var/www/html/adial/stasis-app
 
-# Create .env file
-cat > .env << EOF
+# Copy example environment file and configure it
+cp .env.example .env
+
+# Edit .env file with your actual credentials
+nano .env
+# Or use your preferred editor (vim, vi, etc.)
+```
+
+**Configure the following values in `.env`:**
+
+```ini
 # Asterisk ARI Configuration
 ARI_HOST=localhost
 ARI_PORT=8088
 ARI_USERNAME=dialer
-ARI_PASSWORD=your_ari_password
-ARI_APP=dialer
+ARI_PASSWORD=your_ari_password        # Replace with actual ARI password
+ARI_APP_NAME=dialer
 
 # Database Configuration
 DB_HOST=localhost
-DB_USER=adialer_user
-DB_PASSWORD=your_secure_password
+DB_USER=adialer_user                  # Replace with database username
+DB_PASSWORD=your_secure_password      # Replace with database password
 DB_NAME=adialer
 
-# Logging
+# Application Settings
+DEBUG_MODE=true
 LOG_LEVEL=info
-EOF
+RECORDINGS_PATH=/var/spool/asterisk/monitor/adial
+SOUNDS_PATH=/var/lib/asterisk/sounds/dialer
+```
 
+**Important:** Never commit the `.env` file to version control as it contains sensitive credentials.
+
+```bash
 # Install dependencies
 npm install --production
 ```
