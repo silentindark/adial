@@ -1,0 +1,573 @@
+{
+	"info": {
+		"_postman_id": "ari-dialer-api-v1",
+		"name": "ARI Dialer API v1",
+		"description": "Complete API collection for ARI Dialer campaign management system",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{api_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://your-server/adial/api",
+			"type": "string"
+		},
+		{
+			"key": "api_token",
+			"value": "your_api_token_here",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "API Info",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}",
+					"host": ["{{base_url}}"]
+				},
+				"description": "Get API information and available endpoints"
+			}
+		},
+		{
+			"name": "Campaigns",
+			"item": [
+				{
+					"name": "List Campaigns",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns?status=running",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns"],
+							"query": [
+								{
+									"key": "status",
+									"value": "running",
+									"description": "Filter by status: stopped, running, paused"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Campaign",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Campaign",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test Campaign\",\n  \"description\": \"API Test Campaign\",\n  \"trunk_type\": \"pjsip\",\n  \"trunk_value\": \"my_trunk\",\n  \"callerid\": \"1234567890\",\n  \"agent_dest_type\": \"exten\",\n  \"agent_dest_value\": \"100\",\n  \"record_calls\": 1,\n  \"concurrent_calls\": 5,\n  \"retry_times\": 2,\n  \"retry_delay\": 300\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/campaigns",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns"]
+						}
+					}
+				},
+				{
+					"name": "Update Campaign",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Campaign Name\",\n  \"concurrent_calls\": 10\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/campaigns/1",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Campaign",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1"]
+						}
+					}
+				},
+				{
+					"name": "Start Campaign",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/start",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "start"]
+						}
+					}
+				},
+				{
+					"name": "Stop Campaign",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/stop",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "stop"]
+						}
+					}
+				},
+				{
+					"name": "Pause Campaign",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/pause",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "pause"]
+						}
+					}
+				},
+				{
+					"name": "Resume Campaign",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/resume",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "resume"]
+						}
+					}
+				},
+				{
+					"name": "Get Campaign Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/stats",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "stats"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Numbers",
+			"item": [
+				{
+					"name": "List Campaign Numbers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/numbers?status=pending&page=1&per_page=20",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "numbers"],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "20"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Add Single Number",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone_number\": \"1234567890\",\n  \"data\": {\n    \"name\": \"John Doe\",\n    \"company\": \"ABC Corp\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/numbers",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "numbers"]
+						}
+					}
+				},
+				{
+					"name": "Bulk Add Numbers",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"numbers\": [\n    {\n      \"phone_number\": \"1111111111\",\n      \"data\": {\"name\": \"Person 1\"}\n    },\n    {\n      \"phone_number\": \"2222222222\",\n      \"data\": {\"name\": \"Person 2\"}\n    },\n    {\n      \"phone_number\": \"3333333333\",\n      \"data\": {\"name\": \"Person 3\"}\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/campaigns/1/numbers/bulk",
+							"host": ["{{base_url}}"],
+							"path": ["campaigns", "1", "numbers", "bulk"]
+						}
+					}
+				},
+				{
+					"name": "Get Number Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/numbers/1",
+							"host": ["{{base_url}}"],
+							"path": ["numbers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Number",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/numbers/1",
+							"host": ["{{base_url}}"],
+							"path": ["numbers", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "CDR",
+			"item": [
+				{
+					"name": "List CDR Records",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/cdr?campaign_id=1&disposition=answered&page=1&per_page=20",
+							"host": ["{{base_url}}"],
+							"path": ["cdr"],
+							"query": [
+								{
+									"key": "campaign_id",
+									"value": "1"
+								},
+								{
+									"key": "disposition",
+									"value": "answered"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "20"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get CDR Record",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/cdr/1",
+							"host": ["{{base_url}}"],
+							"path": ["cdr", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get CDR Statistics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/cdr/stats?campaign_id=1&start_date=2024-12-01&end_date=2024-12-31",
+							"host": ["{{base_url}}"],
+							"path": ["cdr", "stats"],
+							"query": [
+								{
+									"key": "campaign_id",
+									"value": "1"
+								},
+								{
+									"key": "start_date",
+									"value": "2024-12-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2024-12-31"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Monitoring",
+			"item": [
+				{
+					"name": "Get System Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/monitoring/status",
+							"host": ["{{base_url}}"],
+							"path": ["monitoring", "status"]
+						}
+					}
+				},
+				{
+					"name": "Get Active Channels",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/monitoring/channels",
+							"host": ["{{base_url}}"],
+							"path": ["monitoring", "channels"]
+						}
+					}
+				},
+				{
+					"name": "Get Real-time Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/monitoring/realtime",
+							"host": ["{{base_url}}"],
+							"path": ["monitoring", "realtime"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "IVR",
+			"item": [
+				{
+					"name": "List IVR Menus",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ivr?campaign_id=1",
+							"host": ["{{base_url}}"],
+							"path": ["ivr"],
+							"query": [
+								{
+									"key": "campaign_id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get IVR Menu",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ivr/1",
+							"host": ["{{base_url}}"],
+							"path": ["ivr", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete IVR Menu",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ivr/1",
+							"host": ["{{base_url}}"],
+							"path": ["ivr", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users (Admin)",
+			"item": [
+				{
+					"name": "List Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": ["{{base_url}}"],
+							"path": ["users"]
+						}
+					}
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"newuser\",\n  \"password\": \"secure_password\",\n  \"email\": \"user@example.com\",\n  \"full_name\": \"New User\",\n  \"role\": \"user\",\n  \"api_access\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": ["{{base_url}}"],
+							"path": ["users"]
+						}
+					}
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"newemail@example.com\",\n  \"role\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/2",
+							"host": ["{{base_url}}"],
+							"path": ["users", "2"]
+						}
+					}
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/2",
+							"host": ["{{base_url}}"],
+							"path": ["users", "2"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "API Tokens",
+			"item": [
+				{
+					"name": "List Your Tokens",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/tokens",
+							"host": ["{{base_url}}"],
+							"path": ["tokens"]
+						}
+					}
+				},
+				{
+					"name": "Create Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"New API Token\",\n  \"permissions\": [\"campaigns/*\", \"cdr/*\"],\n  \"expires_at\": \"2025-12-31 23:59:59\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/tokens",
+							"host": ["{{base_url}}"],
+							"path": ["tokens"]
+						}
+					}
+				},
+				{
+					"name": "Revoke Token",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/tokens/1",
+							"host": ["{{base_url}}"],
+							"path": ["tokens", "1"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

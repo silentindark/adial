@@ -67,9 +67,17 @@ detect_os() {
         . /etc/os-release
         OS=$ID
         OS_VERSION=$VERSION_ID
+        OS_NAME=$NAME
     else
         print_error "Cannot detect operating system"
         exit 1
+    fi
+
+    # Detect FreePBX/Sangoma systems
+    IS_FREEPBX=false
+    if [[ "$OS" == "sangoma" ]] || [[ "$OS_NAME" == "Sangoma Linux" ]] || [ -d "/var/www/html/admin" ]; then
+        IS_FREEPBX=true
+        print_info "Detected FreePBX/Sangoma system"
     fi
 
     print_info "Detected OS: $OS $OS_VERSION"
@@ -368,11 +376,42 @@ setup_directories() {
 configure_webserver() {
     print_header "Configuring Web Server"
 
-    if [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]]; then
+    if [ "$IS_FREEPBX" = true ]; then
+        configure_apache_freepbx
+    elif [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]] || [[ "$OS" == "sangoma" ]]; then
         configure_apache_centos
     elif [[ "$OS" == "ubuntu" ]] || [[ "$OS" == "debian" ]]; then
         configure_apache_debian
     fi
+}
+
+configure_apache_freepbx() {
+    print_info "Configuring Apache for FreePBX..."
+
+    # FreePBX already has Apache configured - just ensure our directory has proper permissions
+    print_info "FreePBX detected - skipping VirtualHost configuration"
+    print_info "ARI Dialer will be accessible at: http://your-server/adial"
+
+    # Ensure .htaccess is enabled (FreePBX usually has this enabled)
+    if [ -f /etc/httpd/conf.d/allowoverride.conf ]; then
+        print_success "AllowOverride already configured"
+    else
+        # Create a minimal config to ensure .htaccess works in our directory
+        cat > /etc/httpd/conf.d/adial-allowoverride.conf << 'EOF'
+<Directory /var/www/html/adial>
+    AllowOverride All
+</Directory>
+EOF
+        print_success "Created AllowOverride configuration for /var/www/html/adial"
+    fi
+
+    # Restart Apache to apply changes
+    systemctl restart httpd 2>/dev/null || true
+
+    print_success "Apache configured for FreePBX"
+    print_warning "Note: ARI Dialer is installed alongside FreePBX"
+    print_info "Access ARI Dialer at: http://$(hostname -I | awk '{print $1}')/adial"
+    print_info "Access FreePBX at:    http://$(hostname -I | awk '{print $1}')/admin"
 }
 
 configure_apache_centos() {
@@ -470,13 +509,56 @@ configure_asterisk() {
 
     print_info "Configuring ARI user..."
 
-    # Backup original ari.conf
-    if [ -f /etc/asterisk/ari.conf ]; then
-        cp /etc/asterisk/ari.conf /etc/asterisk/ari.conf.bak
-    fi
+    if [ "$IS_FREEPBX" = true ]; then
+        # FreePBX detected - use ari_additional_custom.conf to avoid overwriting FreePBX managed configs
+        print_info "FreePBX detected - using ari_additional_custom.conf instead of ari.conf"
 
-    # Configure ARI
-    cat > /etc/asterisk/ari.conf << EOF
+        # Backup existing ari_additional_custom.conf if it exists
+        if [ -f /etc/asterisk/ari_additional_custom.conf ]; then
+            cp /etc/asterisk/ari_additional_custom.conf /etc/asterisk/ari_additional_custom.conf.bak
+        fi
+
+        # Check if ARI is already enabled in main ari.conf
+        if ! grep -q "enabled = yes" /etc/asterisk/ari.conf 2>/dev/null; then
+            print_warning "ARI may not be enabled in FreePBX"
+            print_info "Please enable ARI in FreePBX GUI: Settings -> Asterisk REST Interface (ARI)"
+        fi
+
+        # Create ARI user in ari_additional_custom.conf
+        # Check if user already exists in the file
+        if [ -f /etc/asterisk/ari_additional_custom.conf ] && grep -q "^\[${ARI_USER}\]" /etc/asterisk/ari_additional_custom.conf; then
+            # User exists, update password
+            print_info "Updating existing ARI user in ari_additional_custom.conf"
+            sed -i "/^\[${ARI_USER}\]/,/^\[/ s/^password = .*/password = ${ARI_PASS}/" /etc/asterisk/ari_additional_custom.conf
+        else
+            # Add new user
+            cat >> /etc/asterisk/ari_additional_custom.conf << EOF
+
+; ARI Dialer User Configuration
+[${ARI_USER}]
+type = user
+read_only = no
+password = ${ARI_PASS}
+EOF
+        fi
+
+        print_success "ARI user configured in ari_additional_custom.conf"
+
+        # Reload Asterisk (don't restart on FreePBX)
+        asterisk -rx "module reload res_ari.so" 2>/dev/null || asterisk -rx "core reload" 2>/dev/null || true
+
+        print_info "Important: Verify ARI is enabled in FreePBX GUI:"
+        print_info "  Settings -> Asterisk REST Interface (ARI)"
+
+    else
+        # Standard Asterisk installation - safe to overwrite ari.conf
+        # Backup original ari.conf
+        if [ -f /etc/asterisk/ari.conf ]; then
+            cp /etc/asterisk/ari.conf /etc/asterisk/ari.conf.bak
+        fi
+
+        # Configure ARI
+        cat > /etc/asterisk/ari.conf << EOF
 [general]
 enabled = yes
 pretty = yes
@@ -488,10 +570,12 @@ read_only = no
 password = ${ARI_PASS}
 EOF
 
-    # Restart Asterisk
-    systemctl restart asterisk 2>/dev/null || asterisk -rx "core reload" 2>/dev/null || true
+        # Restart Asterisk
+        systemctl restart asterisk 2>/dev/null || asterisk -rx "core reload" 2>/dev/null || true
 
-    print_success "Asterisk ARI configured"
+        print_success "Asterisk ARI configured"
+    fi
+
     echo ""
 }
 
@@ -597,13 +681,27 @@ print_summary() {
     echo "                    Installation Summary"
     echo "========================================================================"
     echo ""
-    echo "Web Interface:"
-    echo "  URL: http://${SERVER_IP}/adial"
-    echo "  or:  http://localhost/adial"
-    echo "  Username: admin"
-    echo "  Password: admin"
-    echo "  ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!"
-    echo ""
+    if [ "$IS_FREEPBX" = true ]; then
+        echo "System Type: FreePBX/Sangoma Linux"
+        echo ""
+        echo "Web Interfaces:"
+        echo "  ARI Dialer:  http://${SERVER_IP}/adial"
+        echo "  FreePBX GUI: http://${SERVER_IP}/admin"
+        echo ""
+        echo "ARI Dialer Login:"
+        echo "  Username: admin"
+        echo "  Password: admin"
+        echo "  ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!"
+        echo ""
+    else
+        echo "Web Interface:"
+        echo "  URL: http://${SERVER_IP}/adial"
+        echo "  or:  http://localhost/adial"
+        echo "  Username: admin"
+        echo "  Password: admin"
+        echo "  ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!"
+        echo ""
+    fi
     echo "Database:"
     echo "  Database: ${DB_NAME}"
     echo "  Username: ${DB_USER}"
@@ -613,6 +711,14 @@ print_summary() {
     echo "  Username: ${ARI_USER}"
     echo "  Password: ${ARI_PASS}"
     echo "  URL: http://localhost:8088/ari"
+    if [ "$IS_FREEPBX" = true ]; then
+        echo "  Config:   /etc/asterisk/ari_additional_custom.conf"
+        echo ""
+        echo "⚠️  FreePBX Note:"
+        echo "  • ARI user configured in ari_additional_custom.conf (FreePBX-safe)"
+        echo "  • Verify ARI is enabled: Settings -> Asterisk REST Interface"
+        echo "  • FreePBX configs in /etc/asterisk/ were NOT modified"
+    fi
     echo ""
     echo "Services:"
     echo "  • Web Server: $(systemctl is-active httpd apache2 2>/dev/null | grep active | head -1)"

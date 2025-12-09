@@ -52,3 +52,47 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $route['default_controller'] = 'dashboard';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
+
+// =========================================================================
+// API Routes v1
+// =========================================================================
+
+// API Index
+$route['api'] = 'api/index';
+$route['api/index'] = 'api/index';
+
+// Campaign Routes
+$route['api/campaigns'] = 'api/campaigns_list';
+$route['api/campaigns/(:num)'] = 'api/campaigns_view/$1';
+$route['api/campaigns/(:num)/stats'] = 'api/campaigns_stats/$1';
+$route['api/campaigns/(:num)/start'] = 'api/campaigns_start/$1';
+$route['api/campaigns/(:num)/stop'] = 'api/campaigns_stop/$1';
+$route['api/campaigns/(:num)/pause'] = 'api/campaigns_pause/$1';
+$route['api/campaigns/(:num)/resume'] = 'api/campaigns_resume/$1';
+
+// Campaign Numbers Routes
+$route['api/campaigns/(:num)/numbers'] = 'api/numbers_list/$1';
+$route['api/campaigns/(:num)/numbers/bulk'] = 'api/numbers_bulk_add/$1';
+$route['api/numbers/(:num)'] = 'api/numbers_view/$1';
+
+// CDR Routes
+$route['api/cdr'] = 'api/cdr_list';
+$route['api/cdr/stats'] = 'api/cdr_stats';
+$route['api/cdr/(:num)'] = 'api/cdr_view/$1';
+
+// Monitoring Routes
+$route['api/monitoring/status'] = 'api/monitoring_status';
+$route['api/monitoring/channels'] = 'api/monitoring_channels';
+$route['api/monitoring/realtime'] = 'api/monitoring_realtime';
+
+// IVR Routes
+$route['api/ivr'] = 'api/ivr_list';
+$route['api/ivr/(:num)'] = 'api/ivr_view/$1';
+
+// User Management Routes (Admin only)
+$route['api/users'] = 'api/users_list';
+$route['api/users/(:num)'] = 'api/users_update/$1';
+
+// API Token Management Routes
+$route['api/tokens'] = 'api/tokens_list';
+$route['api/tokens/(:num)'] = 'api/tokens_revoke/$1';
