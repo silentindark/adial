@@ -126,10 +126,11 @@ prompt_mysql_password() {
 
 mysql_cmd() {
     # Execute MySQL command with root password if set
+    # Add connection timeout to prevent hanging
     if [ -z "$MYSQL_ROOT_PASS" ]; then
-        mysql -u root "$@"
+        mysql -u root --connect-timeout=10 "$@"
     else
-        mysql -u root --password="$MYSQL_ROOT_PASS" "$@"
+        mysql -u root --password="$MYSQL_ROOT_PASS" --connect-timeout=10 "$@"
     fi
 }
 
@@ -334,6 +335,34 @@ install_asterisk() {
 setup_database() {
     print_header "Setting Up Database"
 
+    # Check if MariaDB/MySQL service is running
+    print_info "Checking MariaDB/MySQL service status..."
+    if systemctl is-active --quiet mariadb 2>/dev/null; then
+        print_success "MariaDB service is running"
+    elif systemctl is-active --quiet mysql 2>/dev/null; then
+        print_success "MySQL service is running"
+    else
+        print_warning "MariaDB/MySQL service is not running. Attempting to start..."
+        if systemctl start mariadb 2>/dev/null || systemctl start mysql 2>/dev/null; then
+            print_success "Database service started successfully"
+            sleep 2  # Give the service time to fully start
+        else
+            print_error "Failed to start MariaDB/MySQL service"
+            print_info "Please start the database service manually and run the installer again"
+            exit 1
+        fi
+    fi
+
+    # Test database connection before proceeding
+    print_info "Testing database connection..."
+    if ! mysql_cmd -e "SELECT 1;" > /dev/null 2>&1; then
+        print_error "Cannot connect to database server"
+        print_info "Please check that MariaDB/MySQL is installed and running"
+        print_info "Try: systemctl status mariadb"
+        exit 1
+    fi
+    print_success "Database connection successful"
+
     # Generate database password if not set
     if [ -z "$DB_PASS" ]; then
         DB_PASS=$(generate_password)
@@ -344,26 +373,31 @@ setup_database() {
     print_info "Creating database '$DB_NAME' and user '$DB_USER'..."
 
     # Create database
-    if ! mysql_cmd -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;" > /dev/null; then
+    if ! mysql_cmd -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;" 2>&1; then
         print_error "Failed to create database"
         exit 1
     fi
+    print_success "Database '${DB_NAME}' created"
 
     # Create user (MariaDB 5.5 compatible - drop first then create)
     mysql_cmd -e "DROP USER '${DB_USER}'@'localhost';" > /dev/null 2>&1  # Ignore error if user doesn't exist
-    if ! mysql_cmd -e "CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" > /dev/null; then
+    if ! mysql_cmd -e "CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>&1; then
         print_error "Failed to create database user"
         exit 1
     fi
+    print_success "Database user '${DB_USER}' created"
 
     # Grant privileges
-    if ! mysql_cmd -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" > /dev/null; then
+    if ! mysql_cmd -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" 2>&1; then
         print_error "Failed to grant privileges"
         exit 1
     fi
+    print_success "Privileges granted"
 
     # Flush privileges
-    mysql_cmd -e "FLUSH PRIVILEGES;" > /dev/null
+    if ! mysql_cmd -e "FLUSH PRIVILEGES;" 2>&1; then
+        print_warning "Failed to flush privileges (non-critical)"
+    fi
 
     # Import database schema
     if [ -f "${INSTALL_DIR}/database_schema.sql" ]; then
