@@ -108,7 +108,7 @@ prompt_mysql_password() {
         echo ""
 
         # Test the password
-        if mysql -u root -p"$MYSQL_ROOT_PASS" -e "SELECT 1;" &>/dev/null; then
+        if mysql -u root --password="$MYSQL_ROOT_PASS" -e "SELECT 1;" &>/dev/null; then
             print_success "MySQL root password verified"
             echo ""
             return 0
@@ -129,7 +129,7 @@ mysql_cmd() {
     if [ -z "$MYSQL_ROOT_PASS" ]; then
         mysql -u root "$@"
     else
-        mysql -u root -p"$MYSQL_ROOT_PASS" "$@"
+        mysql -u root --password="$MYSQL_ROOT_PASS" "$@"
     fi
 }
 
@@ -343,20 +343,33 @@ setup_database() {
     # Create database and user
     print_info "Creating database '$DB_NAME' and user '$DB_USER'..."
 
-    mysql_cmd -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;" 2>/dev/null || {
+    # Create database
+    if ! mysql_cmd -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;" > /dev/null; then
         print_error "Failed to create database"
         exit 1
-    }
+    fi
 
-    mysql_cmd -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>/dev/null
-    mysql_cmd -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" 2>/dev/null
-    mysql_cmd -e "FLUSH PRIVILEGES;" 2>/dev/null
+    # Create user (ignore error if user exists)
+    mysql_cmd -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" > /dev/null 2>&1
+
+    # Grant privileges
+    if ! mysql_cmd -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" > /dev/null; then
+        print_error "Failed to grant privileges"
+        exit 1
+    fi
+
+    # Flush privileges
+    mysql_cmd -e "FLUSH PRIVILEGES;" > /dev/null
 
     # Import database schema
     if [ -f "${INSTALL_DIR}/database_schema.sql" ]; then
         print_info "Importing database schema..."
-        mysql_cmd "$DB_NAME" < "${INSTALL_DIR}/database_schema.sql"
-        print_success "Database schema imported"
+        if mysql_cmd "$DB_NAME" < "${INSTALL_DIR}/database_schema.sql"; then
+            print_success "Database schema imported"
+        else
+            print_error "Failed to import database schema"
+            exit 1
+        fi
     else
         print_warning "Database schema file not found"
     fi
