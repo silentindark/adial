@@ -3,7 +3,7 @@
 ## Your API Token
 
 ```
-18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b
+6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb
 ```
 
 **⚠️ Save this token securely! You'll need it for all API requests.**
@@ -12,26 +12,26 @@
 
 ### 1. Test API Connection
 ```bash
-curl -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+curl -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api
 ```
 
 ### 2. List All Campaigns
 ```bash
-curl -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+curl -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api/campaigns
 ```
 
 ### 3. Get System Status
 ```bash
-curl -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+curl -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api/monitoring/status
 ```
 
 ### 4. Create a Campaign
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+  -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test Campaign",
@@ -47,7 +47,7 @@ curl -X POST \
 ### 5. Add Numbers to Campaign (Replace :id with campaign ID)
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+  -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   -H "Content-Type: application/json" \
   -d '{
     "numbers": [
@@ -61,32 +61,32 @@ curl -X POST \
 ### 6. Start Campaign (Replace :id with campaign ID)
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+  -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api/campaigns/:id/start
 ```
 
 ### 7. Get Campaign Statistics (Replace :id with campaign ID)
 ```bash
-curl -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+curl -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api/campaigns/:id/stats
 ```
 
 ### 8. Stop Campaign (Replace :id with campaign ID)
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+  -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api/campaigns/:id/stop
 ```
 
 ### 9. Get Real-time Monitoring Data
 ```bash
-curl -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+curl -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api/monitoring/realtime
 ```
 
 ### 10. Get CDR Records
 ```bash
-curl -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+curl -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   http://localhost/adial/api/cdr?page=1&per_page=20
 ```
 
@@ -95,7 +95,7 @@ curl -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec4375
 For easier testing, set these environment variables:
 
 ```bash
-export API_TOKEN="18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b"
+export API_TOKEN="6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb"
 export API_URL="http://localhost/adial/api"
 
 # Then use them in commands:
@@ -151,7 +151,7 @@ To create additional API tokens:
 
 ```bash
 TOKEN=$(openssl rand -hex 32)
-mysql -u root -pmahapharata adialer -e "
+mysql -u adialer_user -pXD3UBuaY53LCLiMn adialer -e "
 INSERT INTO api_tokens (user_id, token, name, is_active, created_at)
 VALUES (1, '$TOKEN', 'My New Token', 1, NOW());
 "
@@ -162,7 +162,7 @@ Or use the API:
 
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer 18d89bf708c8cbee39eaa0d9d4ffc090aa23ede029bec437525e2ff3266ba09b" \
+  -H "Authorization: Bearer 6b0b9ac41033029a22c6b4139dfc4115ad4bfa5101f7d475acc3a05ff23e7dcb" \
   -H "Content-Type: application/json" \
   -d '{"name": "My New Token"}' \
   http://localhost/adial/api/tokens

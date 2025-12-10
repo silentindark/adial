@@ -349,8 +349,12 @@ setup_database() {
         exit 1
     fi
 
-    # Create user (ignore error if user exists)
-    mysql_cmd -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" > /dev/null 2>&1
+    # Create user (MariaDB 5.5 compatible - drop first then create)
+    mysql_cmd -e "DROP USER '${DB_USER}'@'localhost';" > /dev/null 2>&1  # Ignore error if user doesn't exist
+    if ! mysql_cmd -e "CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" > /dev/null; then
+        print_error "Failed to create database user"
+        exit 1
+    fi
 
     # Grant privileges
     if ! mysql_cmd -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" > /dev/null; then
