@@ -140,10 +140,15 @@ function startCampaign(campaignId) {
 
   logger.info(`Starting campaign ${campaignId}: ${campaign.name}`);
 
-  // Process campaign every 100ms for near-instant dialing
+  // Process campaign interval in milliseconds
+  // 100ms = 10 times/sec (fast), 1000ms = 1/sec, 3000ms = every 3 seconds
+  const processIntervalMs = process.env.CAMPAIGN_PROCESS_INTERVAL || 100;
+
   campaign.processInterval = setInterval(() => {
     processCampaign(campaignId);
-  }, 100); // Check 10 times per second for immediate call processing
+  }, processIntervalMs);
+
+  logger.debug(`Campaign ${campaignId} process interval set to ${processIntervalMs}ms`);
 }
 
 /**
@@ -301,6 +306,14 @@ async function dialNumber(campaign, numberRecord) {
     logger.error(`Error message: ${err.message}`);
     if (err.stack) {
       logger.error(`Error stack: ${err.stack}`);
+    }
+
+    // CRITICAL: If we added the call to activeCalls, clean it up
+    // This prevents slot counter leaks when calls fail after being tracked
+    if (activeCalls.has(channelId)) {
+      campaign.currentCalls--;
+      activeCalls.delete(channelId);
+      logger.info(`Cleaned up failed call ${channelId}: decremented currentCalls to ${campaign.currentCalls}`);
     }
 
     // Mark as failed
@@ -665,17 +678,23 @@ async function executeIVRAction(channel, callInfo, action, actions, playback = n
         logger.info(`ARI POST /channels - Originating to extension ${action.action_value}`);
         logger.info(`Setting Caller ID: ${callerIdFull}`);
 
+        const extChannelId = `ivr-exten-${Date.now()}`;
         const extChannel = ariClient.Channel();
         await extChannel.originate({
           endpoint: action.action_value,
           app: config.ari.app,
-          channelId: `ivr-exten-${Date.now()}`,
+          channelId: extChannelId,
           callerId: callerIdFull
         });
 
         logger.info(`ARI RESPONSE: Extension channel originated successfully`);
         await bridge.addChannel({ channel: extChannel.id });
         logger.info(`Extension channel added to bridge`);
+
+        // CRITICAL: Track bridge and agent channel so cleanup works when agent hangs up
+        callInfo.bridge = bridge.id;
+        callInfo.agentChannel = extChannelId;
+        logger.info(`Tracked IVR extension bridge ${bridge.id} and agent ${extChannelId} for cleanup`);
         break;
 
       case 'hangup':
@@ -702,17 +721,23 @@ async function executeIVRAction(channel, callInfo, action, actions, playback = n
         logger.info(`ARI POST /channels - Originating to queue ${queueNumber} via ${queueEndpoint}`);
         logger.info(`Setting Caller ID: ${queueCallerIdFull}`);
 
+        const queueChannelId = `ivr-queue-${Date.now()}`;
         const queueChannel = ariClient.Channel();
         await queueChannel.originate({
           endpoint: queueEndpoint,
           app: config.ari.app,
-          channelId: `ivr-queue-${Date.now()}`,
+          channelId: queueChannelId,
           callerId: queueCallerIdFull
         });
 
         logger.info(`ARI RESPONSE: Queue channel originated successfully`);
         await queueBridge.addChannel({ channel: queueChannel.id });
         logger.info(`Queue channel added to bridge`);
+
+        // CRITICAL: Track bridge and agent channel so cleanup works when agent hangs up
+        callInfo.bridge = queueBridge.id;
+        callInfo.agentChannel = queueChannelId;
+        logger.info(`Tracked IVR queue bridge ${queueBridge.id} and agent ${queueChannelId} for cleanup`);
         break;
 
       case 'goto_ivr':
@@ -1013,37 +1038,35 @@ async function channelLeftBridge(event, instances) {
 
   logger.info(`${isCustomerChannel ? 'Customer' : 'Agent'} channel ${channel.id} left bridge - cleaning up call`);
 
-  // Hangup the other channel
-  try {
-    if (isCustomerChannel && callInfo.agentChannel) {
-      // Customer left, hangup agent
-      logger.info(`Hanging up agent channel ${callInfo.agentChannel}`);
-      try {
-        await ariClient.channels.hangup({ channelId: callInfo.agentChannel });
-        logger.info(`Agent channel ${callInfo.agentChannel} hung up`);
-      } catch (err) {
-        logger.warn(`Failed to hangup agent ${callInfo.agentChannel}: ${err.message}`);
-      }
-    } else if (!isCustomerChannel && customerChannelId) {
-      // Agent left, hangup customer
-      logger.info(`Hanging up customer channel ${customerChannelId}`);
-      try {
-        await ariClient.channels.hangup({ channelId: customerChannelId });
-        logger.info(`Customer channel ${customerChannelId} hung up`);
-      } catch (err) {
-        logger.warn(`Failed to hangup customer ${customerChannelId}: ${err.message}`);
-      }
+  // CRITICAL: When agent hangs up, we must destroy both the customer channel AND the bridge
+  // Hangup the other channel first
+  if (isCustomerChannel && callInfo.agentChannel) {
+    // Customer left, hangup agent
+    logger.info(`Customer hung up - hanging up agent channel ${callInfo.agentChannel}`);
+    try {
+      await ariClient.channels.hangup({ channelId: callInfo.agentChannel });
+      logger.info(`Agent channel ${callInfo.agentChannel} hung up successfully`);
+    } catch (err) {
+      logger.warn(`Failed to hangup agent ${callInfo.agentChannel}: ${err.message}`);
     }
-  } catch (err) {
-    logger.error(`Error hanging up other channel: ${err.message}`);
+  } else if (!isCustomerChannel && customerChannelId) {
+    // Agent left, hangup customer - THIS IS THE CRITICAL PATH
+    logger.info(`Agent hung up - hanging up customer channel ${customerChannelId}`);
+    try {
+      await ariClient.channels.hangup({ channelId: customerChannelId });
+      logger.info(`Customer channel ${customerChannelId} hung up successfully`);
+    } catch (err) {
+      logger.warn(`Failed to hangup customer ${customerChannelId}: ${err.message}`);
+    }
   }
 
-  // Destroy the bridge
+  // Destroy the bridge - must happen after hangup to clean up resources
   try {
-    logger.info(`Destroying bridge ${bridge.id}`);
+    logger.info(`Destroying bridge ${bridge.id} after channel cleanup`);
     await ariClient.bridges.destroy({ bridgeId: bridge.id });
     logger.info(`Bridge ${bridge.id} destroyed successfully`);
   } catch (err) {
+    // Bridge might already be destroyed if both channels left - this is OK
     logger.warn(`Failed to destroy bridge ${bridge.id}: ${err.message}`);
   }
 }
@@ -1233,6 +1256,10 @@ async function hangupCall(channelId, disposition) {
   const campaign = activeCampaigns.get(callInfo.campaignId);
   if (campaign) {
     campaign.currentCalls--;
+    logger.debug(`Decremented currentCalls for campaign ${callInfo.campaignId} to ${campaign.currentCalls}`);
+  } else {
+    // Campaign was removed/stopped while call was active - this is expected behavior
+    logger.debug(`Campaign ${callInfo.campaignId} not in activeCampaigns during cleanup (may have been stopped)`);
   }
 
   // Remove from active calls
