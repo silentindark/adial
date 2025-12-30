@@ -252,8 +252,14 @@ async function dialNumber(campaign, numberRecord) {
     let endpoint;
     if (campaign.trunk_type === 'custom') {
       endpoint = campaign.trunk_value.replace('${EXTEN}', numberRecord.phone_number);
+    } else if (campaign.trunk_type === 'pjsip') {
+      // PJSIP format: PJSIP/number@endpoint
+      endpoint = `PJSIP/${numberRecord.phone_number}@${campaign.trunk_value}`;
+    } else if (campaign.trunk_type === 'sip') {
+      // SIP (chan_sip) format: SIP/trunk/number
+      endpoint = `SIP/${campaign.trunk_value}/${numberRecord.phone_number}`;
     } else {
-      // Use correct PJSIP format: PJSIP/number@trunk
+      // Fallback: uppercase trunk type
       endpoint = `${campaign.trunk_type.toUpperCase()}/${numberRecord.phone_number}@${campaign.trunk_value}`;
     }
 
