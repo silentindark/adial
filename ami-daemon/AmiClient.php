@@ -118,11 +118,14 @@ class AmiClient {
     public function originate($params) {
         $action = array_merge(['Action' => 'Originate'], $params);
 
+        // Log the full Originate action being sent
+        $this->logger->info("AMI Originate Action:", $action);
+
         $this->sendAction($action);
 
         $response = $this->readResponse();
 
-        $this->logger->debug("Originate response: " . trim($response));
+        $this->logger->info("AMI Originate Response: " . trim($response));
 
         // Parse response for ActionID or Uniqueid
         $lines = explode("\n", $response);

@@ -406,7 +406,25 @@ class ADialDaemon {
                 'Async' => $originateParams['Async']
             ];
 
+            $this->logger->info("Preparing to originate call", [
+                'campaign_id' => $campaignId,
+                'number_id' => $numberId,
+                'phone_number' => $phoneNumber,
+                'channel' => $amiParams['Channel'],
+                'context' => $amiParams['Context'],
+                'callerid' => $amiParams['CallerID']
+            ]);
+
             $response = $this->ami->originate($amiParams);
+
+            // Log originate response details
+            if (isset($response['Response'])) {
+                $this->logger->info("Originate response received", [
+                    'response' => $response['Response'],
+                    'message' => $response['Message'] ?? 'N/A',
+                    'actionid' => $response['ActionID'] ?? 'N/A'
+                ]);
+            }
 
             // Increment current calls counter
             $this->campaigns[$campaignId]['currentCalls']++;
