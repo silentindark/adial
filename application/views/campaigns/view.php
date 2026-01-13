@@ -24,12 +24,9 @@
                 </button>
             <?php endif; ?>
 
-            <?php if ($campaign->status == 'stopped'): ?>
-                <a href="<?php echo site_url('campaigns/edit/'.$campaign->id); ?>" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Edit
-                </a>
-            <?php endif; ?>
-
+            <a href="<?php echo site_url('campaigns/edit/'.$campaign->id); ?>" class="btn btn-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
             <a href="<?php echo site_url('campaigns'); ?>" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back
             </a>

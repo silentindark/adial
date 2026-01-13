@@ -105,13 +105,12 @@
                                                class="btn btn-info">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            <a href="<?php echo site_url('campaigns/edit/'.$campaign->id); ?>"
+                                               class="btn btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
 
                                             <?php if ($campaign->status == 'stopped'): ?>
-                                                <a href="<?php echo site_url('campaigns/edit/'.$campaign->id); ?>"
-                                                   class="btn btn-primary">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-
                                                 <button type="button" class="btn btn-danger btn-delete"
                                                         data-id="<?php echo $campaign->id; ?>">
                                                     <i class="fas fa-trash"></i>
