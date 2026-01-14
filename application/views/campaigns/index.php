@@ -71,45 +71,40 @@
                                     <td><?php echo date('Y-m-d H:i', strtotime($campaign->created_at)); ?></td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <?php if ($campaign->status == 'stopped'): ?>
-                                                <button type="button" class="btn btn-success btn-control"
-                                                        data-id="<?php echo $campaign->id; ?>"
-                                                        data-action="start">
-                                                    <i class="fas fa-play"></i>
-                                                </button>
-                                            <?php elseif ($campaign->status == 'running'): ?>
-                                                <button type="button" class="btn btn-warning btn-control"
-                                                        data-id="<?php echo $campaign->id; ?>"
-                                                        data-action="pause">
-                                                    <i class="fas fa-pause"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-danger btn-control"
-                                                        data-id="<?php echo $campaign->id; ?>"
-                                                        data-action="stop">
-                                                    <i class="fas fa-stop"></i>
-                                                </button>
-                                            <?php elseif ($campaign->status == 'paused'): ?>
-                                                <button type="button" class="btn btn-success btn-control"
-                                                        data-id="<?php echo $campaign->id; ?>"
-                                                        data-action="start">
-                                                    <i class="fas fa-play"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-danger btn-control"
-                                                        data-id="<?php echo $campaign->id; ?>"
-                                                        data-action="stop">
-                                                    <i class="fas fa-stop"></i>
-                                                </button>
-                                            <?php endif; ?>
+                                            <!-- Start/Play button -->
+                                            <button type="button" class="btn btn-success btn-control"
+                                                    data-id="<?php echo $campaign->id; ?>"
+                                                    data-action="start">
+                                                <i class="fas fa-play"></i>
+                                            </button>
 
+                                            <!-- Pause button -->
+                                            <button type="button" class="btn btn-warning btn-control"
+                                                    data-id="<?php echo $campaign->id; ?>"
+                                                    data-action="pause">
+                                                <i class="fas fa-pause"></i>
+                                            </button>
+
+                                            <!-- Stop button -->
+                                            <button type="button" class="btn btn-danger btn-control"
+                                                    data-id="<?php echo $campaign->id; ?>"
+                                                    data-action="stop">
+                                                <i class="fas fa-stop"></i>
+                                            </button>
+
+                                            <!-- View button -->
                                             <a href="<?php echo site_url('campaigns/view/'.$campaign->id); ?>"
                                                class="btn btn-info">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+
+                                            <!-- Edit button -->
                                             <a href="<?php echo site_url('campaigns/edit/'.$campaign->id); ?>"
                                                class="btn btn-primary">
                                                 <i class="fas fa-edit"></i>
                                             </a>
 
+                                            <!-- Delete button -->
                                             <?php if ($campaign->status == 'stopped'): ?>
                                                 <button type="button" class="btn btn-danger btn-delete"
                                                         data-id="<?php echo $campaign->id; ?>">

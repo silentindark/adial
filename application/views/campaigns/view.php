@@ -4,29 +4,27 @@
             <h2>Campaign: <?php echo htmlspecialchars($campaign->name); ?></h2>
         </div>
         <div class="col-md-6 text-right">
-            <?php if ($campaign->status == 'stopped'): ?>
-                <button type="button" class="btn btn-success btn-control" data-action="start">
-                    <i class="fas fa-play"></i> Start
-                </button>
-            <?php elseif ($campaign->status == 'running'): ?>
-                <button type="button" class="btn btn-warning btn-control" data-action="pause">
-                    <i class="fas fa-pause"></i> Pause
-                </button>
-                <button type="button" class="btn btn-danger btn-control" data-action="stop">
-                    <i class="fas fa-stop"></i> Stop
-                </button>
-            <?php elseif ($campaign->status == 'paused'): ?>
-                <button type="button" class="btn btn-success btn-control" data-action="start">
-                    <i class="fas fa-play"></i> Resume
-                </button>
-                <button type="button" class="btn btn-danger btn-control" data-action="stop">
-                    <i class="fas fa-stop"></i> Stop
-                </button>
-            <?php endif; ?>
+            <!-- Start button -->
+            <button type="button" class="btn btn-success btn-control" data-action="start">
+                <i class="fas fa-play"></i> Start
+            </button>
 
+            <!-- Pause button -->
+            <button type="button" class="btn btn-warning btn-control" data-action="pause">
+                <i class="fas fa-pause"></i> Pause
+            </button>
+
+            <!-- Stop button -->
+            <button type="button" class="btn btn-danger btn-control" data-action="stop">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+
+            <!-- Edit button -->
             <a href="<?php echo site_url('campaigns/edit/'.$campaign->id); ?>" class="btn btn-primary">
                 <i class="fas fa-edit"></i> Edit
             </a>
+
+            <!-- Back button -->
             <a href="<?php echo site_url('campaigns'); ?>" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back
             </a>
