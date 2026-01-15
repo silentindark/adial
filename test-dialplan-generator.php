@@ -55,37 +55,45 @@ try {
     // Outbound dialing context
     $dialplan .= "[dialer_out]\n";
     $dialplan .= "; Outbound dialing context - uses TRUNK variable to dial external numbers\n";
+    $dialplan .= "; DIAL_TIMEOUT: time to wait for answer (15-180 sec, default 30)\n";
+    $dialplan .= "; CALL_TIMEOUT: max call duration after answer (30-3600 sec, default 600)\n";
     $dialplan .= "exten => _X.,1,NoOp(Dialer Outbound: \${EXTEN} via \${TRUNK})\n";
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,Set(CDR(userfield)=\${CAMPAIGN_ID}:\${NUMBER_ID})\n";
     $dialplan .= " same => n,Set(__CAMPAIGN_ID=\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,Set(__NUMBER_ID=\${NUMBER_ID})\n";
+    $dialplan .= " same => n,Set(__DIAL_TIMEOUT=\${DIAL_TIMEOUT})\n";
+    $dialplan .= " same => n,Set(__CALL_TIMEOUT=\${CALL_TIMEOUT})\n";
     $dialplan .= " same => n,Set(YEAR=\${STRFTIME(\${EPOCH},,\%Y)})\n";
     $dialplan .= " same => n,Set(MONTH=\${STRFTIME(\${EPOCH},,\%m)})\n";
     $dialplan .= " same => n,Set(DAY=\${STRFTIME(\${EPOCH},,\%d)})\n";
     $dialplan .= " same => n,Set(CALLFILENAME=\${UNIQUEID}-\${EXTEN}-\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,System(mkdir -p /var/spool/asterisk/monitor/dialer/\${YEAR}/\${MONTH}/\${DAY})\n";
     $dialplan .= " same => n,MixMonitor(/var/spool/asterisk/monitor/dialer/\${YEAR}/\${MONTH}/\${DAY}/\${CALLFILENAME}.wav,b)\n";
-    $dialplan .= " same => n,Dial(\${TRUNK}/\${EXTEN},60)\n";
+    $dialplan .= " same => n,Dial(\${TRUNK}/\${EXTEN},\${DIAL_TIMEOUT})\n";
     $dialplan .= " same => n,Hangup()\n\n";
 
     // Agent destination context
     $dialplan .= "[dialer_agent]\n";
     $dialplan .= "; Agent destination context - dials agent extension using CHANNEL_TYPE\n";
+    $dialplan .= "; Uses CALL_TIMEOUT to limit maximum conversation duration (L option in milliseconds)\n";
     $dialplan .= "exten => _X.,1,NoOp(Dialer Agent: Connecting to \${CHANNEL_TYPE}/\${EXTEN})\n";
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
+    $dialplan .= " same => n,Set(CALL_TIMEOUT_MS=\$[\${CALL_TIMEOUT}*1000])\n";
     $dialplan .= " same => n,UserEvent(AgentConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Agent:\${EXTEN},ChannelType:\${CHANNEL_TYPE})\n";
-    $dialplan .= " same => n,Dial(\${CHANNEL_TYPE}/\${EXTEN},60)\n";
+    $dialplan .= " same => n,Dial(\${CHANNEL_TYPE}/\${EXTEN},\${DIAL_TIMEOUT},L(\${CALL_TIMEOUT_MS}))\n";
     $dialplan .= " same => n,NoOp(Agent Dial Status: \${DIALSTATUS})\n";
     $dialplan .= " same => n,Hangup()\n\n";
 
     // Queue destination context
     $dialplan .= "[dialer_queue]\n";
     $dialplan .= "; Queue destination context - puts caller into queue\n";
+    $dialplan .= "; Uses CALL_TIMEOUT to limit maximum time in queue + conversation\n";
     $dialplan .= "exten => _X.,1,NoOp(Dialer Queue: Adding to queue \${EXTEN})\n";
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
+    $dialplan .= " same => n,Set(TIMEOUT(absolute)=\${CALL_TIMEOUT})\n";
     $dialplan .= " same => n,UserEvent(QueueConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Queue:\${EXTEN})\n";
-    $dialplan .= " same => n,Queue(\${EXTEN},t,,,300)\n";
+    $dialplan .= " same => n,Queue(\${EXTEN},t,,,\${DIAL_TIMEOUT})\n";
     $dialplan .= " same => n,NoOp(Queue Status: \${QUEUESTATUS})\n";
     $dialplan .= " same => n,Hangup()\n\n";
 

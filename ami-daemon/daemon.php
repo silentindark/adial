@@ -400,6 +400,10 @@ class ADialDaemon {
                     break;
             }
 
+            // Get timeout settings from campaign (with defaults)
+            $dialTimeout = $campaign['dial_timeout'] ?? 30;  // Default 30 seconds
+            $callTimeout = $campaign['call_timeout'] ?? 600; // Default 10 minutes (600 seconds)
+
             // Originate via AMI - use LOCAL channel to go through dialer_out context
             $originateParams = [
                 'Channel' => "LOCAL/$phoneNumber@dialer_out",
@@ -407,12 +411,14 @@ class ADialDaemon {
                 'Exten' => $destExten,
                 'Priority' => '1',
                 'CallerID' => $campaign['callerid'],
-                'Timeout' => '60000', // 60 seconds
+                'Timeout' => ($dialTimeout * 1000), // Convert to milliseconds for AMI
                 'Variable' => [
                     "CAMPAIGN_ID=$campaignId",
                     "NUMBER_ID=$numberId",
                     "TRUNK=$trunkEndpoint",
-                    "CHANNEL_TYPE=$channelType"
+                    "CHANNEL_TYPE=$channelType",
+                    "DIAL_TIMEOUT=$dialTimeout",
+                    "CALL_TIMEOUT=$callTimeout"
                 ],
                 'Async' => 'true'
             ];
@@ -449,12 +455,19 @@ class ADialDaemon {
             $response = $this->ami->originate($amiParams);
 
             // Log originate response details
-            if (isset($response['Response'])) {
-                $this->logger->info("Originate response received", [
-                    'response' => $response['Response'],
-                    'message' => $response['Message'] ?? 'N/A',
-                    'actionid' => $response['ActionID'] ?? 'N/A'
-                ]);
+            $this->logger->info("Originate response received", [
+                'response' => $response['Response'] ?? 'N/A',
+                'message' => $response['Message'] ?? 'N/A',
+                'actionid' => $response['ActionID'] ?? 'N/A'
+            ]);
+
+            // Check if originate failed
+            if (!isset($response['Response']) || strtolower($response['Response']) !== 'success') {
+                $this->logger->error("Originate failed for number $numberId: " . ($response['Message'] ?? 'Unknown error'));
+
+                // Mark as originate_failed
+                $this->db->prepare("UPDATE campaign_numbers SET status = 'originate_failed' WHERE id = ?")->execute([$numberId]);
+                return;
             }
 
             // Increment current calls counter
@@ -476,8 +489,8 @@ class ADialDaemon {
         } catch (Exception $e) {
             $this->logger->error("Failed to originate call for number $numberId: " . $e->getMessage());
 
-            // Mark as failed
-            $this->db->prepare("UPDATE campaign_numbers SET status = 'pending' WHERE id = ?")->execute([$numberId]);
+            // Mark as originate_failed
+            $this->db->prepare("UPDATE campaign_numbers SET status = 'originate_failed' WHERE id = ?")->execute([$numberId]);
         }
     }
 
@@ -620,17 +633,52 @@ class ADialDaemon {
     }
 
     /**
-     * Map Asterisk hangup cause to disposition
+     * Map Asterisk hangup cause to database status enum
+     * Hangup causes: https://wiki.asterisk.org/wiki/display/AST/Hangup+Cause+Mappings
+     *
+     * Database enum: pending, calling, answered, failed, no_answer, busy, cancel, chanunavail, congestion, originate_failed
      */
     private function mapDisposition($cause) {
         switch ((int)$cause) {
-            case 16: // Normal clearing
+            // Answered/Success
+            case 16: // Normal clearing - call was answered and ended normally
                 return 'answered';
+
+            // Busy
             case 17: // User busy
                 return 'busy';
-            case 19: // No answer
+
+            // No answer
+            case 18: // No user responding
+            case 19: // No answer from user (user alerted, no answer)
+            case 20: // Subscriber absent
+                return 'no_answer';
+
+            // Cancel (originator hung up)
             case 21: // Call rejected
-                return 'no-answer';
+            case 487: // Request terminated (SIP cancel)
+                return 'cancel';
+
+            // Channel unavailable
+            case 1:  // Unallocated/unassigned number
+            case 2:  // No route to specified transit network
+            case 3:  // No route to destination
+            case 27: // Destination out of order
+            case 28: // Invalid number format
+            case 29: // Facility rejected
+            case 31: // Normal unspecified
+                return 'chanunavail';
+
+            // Congestion
+            case 34: // No circuit/channel available
+            case 38: // Network out of order
+            case 41: // Temporary failure
+            case 42: // Switching equipment congestion
+            case 47: // Resource unavailable
+            case 63: // Service or option not available
+                return 'congestion';
+
+            // Failed (other errors)
             default:
                 return 'failed';
         }
@@ -655,7 +703,9 @@ class ADialDaemon {
                 return;
             }
 
-            $shouldRetry = in_array($disposition, ['no-answer', 'busy', 'failed']);
+            // Statuses that should trigger retry
+            $retryStatuses = ['no_answer', 'busy', 'failed', 'cancel', 'chanunavail', 'congestion'];
+            $shouldRetry = in_array($disposition, $retryStatuses);
 
             if ($shouldRetry && $number->attempts < $number->retry_times) {
                 // Schedule retry (just reset to pending - will be picked up in next cycle)
@@ -668,16 +718,16 @@ class ADialDaemon {
 
                 $this->logger->info("Number $numberId scheduled for retry (attempt {$number->attempts}/{$number->retry_times})");
             } else {
-                // Mark as completed
+                // Keep the real disposition status instead of generic 'completed'
                 $stmt = $this->db->prepare("
                     UPDATE campaign_numbers
-                    SET status = 'completed'
+                    SET status = ?
                     WHERE id = ?
                 ");
-                $stmt->execute([$numberId]);
+                $stmt->execute([$disposition, $numberId]);
 
-                $reason = !$shouldRetry ? 'answered' : 'max attempts reached';
-                $this->logger->info("Number $numberId marked as completed ($reason)");
+                $reason = !$shouldRetry ? $disposition : 'max attempts reached';
+                $this->logger->info("Number $numberId marked as $disposition ($reason)");
             }
 
         } catch (PDOException $e) {

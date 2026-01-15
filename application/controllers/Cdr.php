@@ -91,6 +91,34 @@ class Cdr extends MY_Controller {
     }
 
     /**
+     * Get recording file path (handles both absolute and relative paths)
+     */
+    private function get_recording_path($recording_file) {
+        if (empty($recording_file)) {
+            return null;
+        }
+
+        // Check if it's an absolute path
+        if (strpos($recording_file, '/') === 0) {
+            return file_exists($recording_file) ? $recording_file : null;
+        }
+
+        // Try monitor directory first (dialer recordings)
+        $path = '/var/spool/asterisk/monitor/' . $recording_file;
+        if (file_exists($path)) {
+            return $path;
+        }
+
+        // Fall back to recording directory
+        $path = '/var/spool/asterisk/recording/' . $recording_file;
+        if (file_exists($path)) {
+            return $path;
+        }
+
+        return null;
+    }
+
+    /**
      * Download recording
      */
     public function download_recording($id) {
@@ -100,11 +128,10 @@ class Cdr extends MY_Controller {
             show_404();
         }
 
-        // Build full path to recording file
-        $file_path = '/var/spool/asterisk/recording/' . $cdr->recording_file;
+        $file_path = $this->get_recording_path($cdr->recording_file);
 
-        if (!file_exists($file_path)) {
-            show_error('Recording file not found: ' . $file_path);
+        if (!$file_path) {
+            show_error('Recording file not found');
             return;
         }
 
@@ -122,11 +149,10 @@ class Cdr extends MY_Controller {
             show_404();
         }
 
-        // Build full path to recording file
-        $file_path = '/var/spool/asterisk/recording/' . $cdr->recording_file;
+        $file_path = $this->get_recording_path($cdr->recording_file);
 
-        if (!file_exists($file_path)) {
-            show_error('Recording file not found: ' . $file_path);
+        if (!$file_path) {
+            show_error('Recording file not found');
             return;
         }
 
@@ -177,7 +203,7 @@ class Cdr extends MY_Controller {
         foreach ($cdr_records as $cdr) {
             // Get destination name from campaign_numbers if available
             $dest_name = '';
-            if ($cdr->campaign_number_id) {
+            if (isset($cdr->campaign_number_id) && $cdr->campaign_number_id) {
                 $this->load->model('Campaign_number_model');
                 $number = $this->Campaign_number_model->get_by_id($cdr->campaign_number_id);
                 if ($number && $number->data) {

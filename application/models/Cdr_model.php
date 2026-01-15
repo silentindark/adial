@@ -44,7 +44,22 @@ class Cdr_model extends CI_Model {
             $this->cdr_db->group_end();
         }
 
-        return $this->cdr_db->select('*, accountcode as campaign_id, calldate as start_time, src as callerid, dst as destination, recordingfile as recording_file')
+        // Select with aliases to match view expectations
+        // asteriskcdrdb.cdr fields: calldate, clid, src, dst, duration, billsec, disposition, accountcode, uniqueid, userfield, recordingfile
+        return $this->cdr_db->select("
+                *,
+                uniqueid as id,
+                accountcode as campaign_id,
+                NULL as campaign_number_id,
+                calldate as start_time,
+                CASE WHEN billsec > 0 THEN DATE_ADD(calldate, INTERVAL (duration - billsec) SECOND) ELSE NULL END as answer_time,
+                DATE_ADD(calldate, INTERVAL duration SECOND) as end_time,
+                src as callerid,
+                dst as destination,
+                dstchannel as agent,
+                LOWER(disposition) as disposition,
+                recordingfile as recording_file
+            ", FALSE)
                         ->order_by('calldate', 'DESC')
                         ->limit($limit, $offset)
                         ->get('cdr')
@@ -91,6 +106,29 @@ class Cdr_model extends CI_Model {
      */
     public function get_by_uniqueid($uniqueid) {
         return $this->cdr_db->where('uniqueid', $uniqueid)
+                        ->get('cdr')
+                        ->row();
+    }
+
+    /**
+     * Get CDR by id (uniqueid)
+     */
+    public function get_by_id($id) {
+        return $this->cdr_db->select("
+                *,
+                uniqueid as id,
+                accountcode as campaign_id,
+                NULL as campaign_number_id,
+                calldate as start_time,
+                CASE WHEN billsec > 0 THEN DATE_ADD(calldate, INTERVAL (duration - billsec) SECOND) ELSE NULL END as answer_time,
+                DATE_ADD(calldate, INTERVAL duration SECOND) as end_time,
+                src as callerid,
+                dst as destination,
+                dstchannel as agent,
+                LOWER(disposition) as disposition,
+                recordingfile as recording_file
+            ", FALSE)
+                        ->where('uniqueid', $id)
                         ->get('cdr')
                         ->row();
     }

@@ -106,9 +106,9 @@
                         <?php if (!empty($cdr_records)): ?>
                             <?php foreach ($cdr_records as $cdr): ?>
                                 <?php
-                                // Get destination name
+                                // Get destination name (only available for internal CDR, not asteriskcdrdb)
                                 $dest_name = '';
-                                if ($cdr->campaign_number_id) {
+                                if (isset($cdr->campaign_number_id) && $cdr->campaign_number_id) {
                                     $number = $this->Campaign_number_model->get_by_id($cdr->campaign_number_id);
                                     if ($number && $number->data) {
                                         $data = json_decode($number->data, true);
@@ -154,8 +154,19 @@
                                     <td>
                                         <?php
                                         $recording_exists = false;
-                                        if ($cdr->recording_file) {
-                                            $full_recording_path = '/var/spool/asterisk/recording/' . $cdr->recording_file;
+                                        $full_recording_path = '';
+                                        if (!empty($cdr->recording_file)) {
+                                            // Check if it's an absolute path (starts with /)
+                                            if (strpos($cdr->recording_file, '/') === 0) {
+                                                $full_recording_path = $cdr->recording_file;
+                                            } else {
+                                                // Try monitor directory first (dialer recordings)
+                                                $full_recording_path = '/var/spool/asterisk/monitor/' . $cdr->recording_file;
+                                                if (!file_exists($full_recording_path)) {
+                                                    // Fall back to recording directory
+                                                    $full_recording_path = '/var/spool/asterisk/recording/' . $cdr->recording_file;
+                                                }
+                                            }
                                             $recording_exists = file_exists($full_recording_path);
                                         }
                                         ?>

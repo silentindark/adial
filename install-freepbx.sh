@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Installation directory
 INSTALL_DIR="/var/www/html/adial"
 ASTERISK_SOUNDS_DIR="/var/lib/asterisk/sounds/dialer"
-RECORDINGS_DIR="/var/spool/asterisk/monitor/adial"
+RECORDINGS_DIR="/var/spool/asterisk/monitor/dialer"
 
 echo "================================"
 echo "A-Dial AMI Dialer Installation"
@@ -173,9 +173,10 @@ mkdir -p "$RECORDINGS_DIR"
 chown -R asterisk:asterisk "$RECORDINGS_DIR"
 echo -e "${GREEN}✓ Recordings directory created: $RECORDINGS_DIR${NC}"
 
-# Create logs directory
+# Create logs directory (writable by both apache and asterisk)
 mkdir -p "$INSTALL_DIR/logs"
-chown -R apache:apache "$INSTALL_DIR/logs"
+chown -R asterisk:asterisk "$INSTALL_DIR/logs"
+chmod 775 "$INSTALL_DIR/logs"
 echo -e "${GREEN}✓ Logs directory created${NC}"
 
 # Create uploads directory
@@ -196,6 +197,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 \$active_group = 'default';
 \$query_builder = TRUE;
 
+// Main A-Dial database
 \$db['default'] = array(
     'dsn'   => '',
     'hostname' => '127.0.0.1',
@@ -216,6 +218,30 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     'stricton' => FALSE,
     'failover' => array(),
     'save_queries' => TRUE
+);
+
+// Asterisk CDR database (FreePBX)
+// NOTE: Update password to match your FreePBX installation
+\$db['asteriskcdr'] = array(
+    'dsn'   => '',
+    'hostname' => '127.0.0.1',
+    'username' => 'freepbxuser',
+    'password' => 'CHANGE_ME',
+    'database' => 'asteriskcdrdb',
+    'dbdriver' => 'mysqli',
+    'dbprefix' => '',
+    'pconnect' => FALSE,
+    'db_debug' => FALSE,
+    'cache_on' => FALSE,
+    'cachedir' => '',
+    'char_set' => 'utf8',
+    'dbcollat' => 'utf8_general_ci',
+    'swap_pre' => '',
+    'encrypt' => FALSE,
+    'compress' => FALSE,
+    'stricton' => FALSE,
+    'failover' => array(),
+    'save_queries' => FALSE
 );
 EOF
 
@@ -444,6 +470,16 @@ echo "IMPORTANT: Save the credentials above to a secure location!"
 echo ""
 echo "MANUAL CONFIGURATION REQUIRED:"
 echo "=============================="
-echo "Edit $INSTALL_DIR/ami-daemon/config.php and update:"
-echo "  - cdr_database password (replace CHANGE_ME with FreePBX database password)"
+echo "1. Edit $INSTALL_DIR/ami-daemon/config.php and update:"
+echo "   - cdr_database password (replace CHANGE_ME with FreePBX database password)"
+echo ""
+echo "2. Edit $INSTALL_DIR/application/config/database.php and update:"
+echo "   - asteriskcdr password (replace CHANGE_ME with FreePBX database password)"
+echo ""
+echo "To find FreePBX database password run:"
+echo "   grep AMPDBPASS /etc/freepbx.conf"
+echo ""
+echo "Default login credentials:"
+echo "   Username: admin"
+echo "   Password: admin"
 echo ""

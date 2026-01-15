@@ -51,6 +51,15 @@ $lang['status_completed'] = 'Completed';
 $lang['status_failed'] = 'Failed';
 $lang['status_online'] = 'Online';
 $lang['status_offline'] = 'Offline';
+$lang['status_pending'] = 'Pending';
+$lang['status_calling'] = 'Calling';
+$lang['status_answered'] = 'Answered';
+$lang['status_no_answer'] = 'No Answer';
+$lang['status_busy'] = 'Busy';
+$lang['status_cancel'] = 'Cancelled';
+$lang['status_chanunavail'] = 'Unavailable';
+$lang['status_congestion'] = 'Congestion';
+$lang['status_originate_failed'] = 'Originate Failed';
 
 // Messages
 $lang['msg_confirm_delete'] = 'Are you sure you want to delete this item?';

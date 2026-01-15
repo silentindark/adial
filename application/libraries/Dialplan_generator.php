@@ -100,35 +100,43 @@ EOT;
         return <<<'EOT'
 [dialer_out]
 ; Outbound dialing context - uses TRUNK variable to dial external numbers
+; DIAL_TIMEOUT: time to wait for answer (15-180 sec, default 30)
+; CALL_TIMEOUT: max call duration after answer (30-3600 sec, default 600)
 exten => _X.,1,NoOp(Dialer Outbound: ${EXTEN} via ${TRUNK})
  same => n,Set(CDR(accountcode)=${CAMPAIGN_ID})
  same => n,Set(CDR(userfield)=${CAMPAIGN_ID}:${NUMBER_ID})
  same => n,Set(__CAMPAIGN_ID=${CAMPAIGN_ID})
  same => n,Set(__NUMBER_ID=${NUMBER_ID})
+ same => n,Set(__DIAL_TIMEOUT=${DIAL_TIMEOUT})
+ same => n,Set(__CALL_TIMEOUT=${CALL_TIMEOUT})
  same => n,Set(YEAR=${STRFTIME(${EPOCH},,%Y)})
  same => n,Set(MONTH=${STRFTIME(${EPOCH},,%m)})
  same => n,Set(DAY=${STRFTIME(${EPOCH},,%d)})
  same => n,Set(CALLFILENAME=${UNIQUEID}-${EXTEN}-${CAMPAIGN_ID})
  same => n,System(mkdir -p /var/spool/asterisk/monitor/dialer/${YEAR}/${MONTH}/${DAY})
  same => n,MixMonitor(/var/spool/asterisk/monitor/dialer/${YEAR}/${MONTH}/${DAY}/${CALLFILENAME}.wav,b)
- same => n,Dial(${TRUNK}/${EXTEN},60)
+ same => n,Dial(${TRUNK}/${EXTEN},${DIAL_TIMEOUT})
  same => n,Hangup()
 
 [dialer_agent]
 ; Agent destination context - dials agent extension using CHANNEL_TYPE
+; Uses CALL_TIMEOUT to limit maximum conversation duration (L option in milliseconds)
 exten => _X.,1,NoOp(Dialer Agent: Connecting to ${CHANNEL_TYPE}/${EXTEN})
  same => n,Set(CDR(accountcode)=${CAMPAIGN_ID})
+ same => n,Set(CALL_TIMEOUT_MS=$[${CALL_TIMEOUT}*1000])
  same => n,UserEvent(AgentConnect,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Agent:${EXTEN},ChannelType:${CHANNEL_TYPE})
- same => n,Dial(${CHANNEL_TYPE}/${EXTEN},60)
+ same => n,Dial(${CHANNEL_TYPE}/${EXTEN},${DIAL_TIMEOUT},L(${CALL_TIMEOUT_MS}))
  same => n,NoOp(Agent Dial Status: ${DIALSTATUS})
  same => n,Hangup()
 
 [dialer_queue]
 ; Queue destination context - puts caller into queue
+; Uses CALL_TIMEOUT to limit maximum time in queue + conversation
 exten => _X.,1,NoOp(Dialer Queue: Adding to queue ${EXTEN})
  same => n,Set(CDR(accountcode)=${CAMPAIGN_ID})
+ same => n,Set(TIMEOUT(absolute)=${CALL_TIMEOUT})
  same => n,UserEvent(QueueConnect,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Queue:${EXTEN})
- same => n,Queue(${EXTEN},t,,,300)
+ same => n,Queue(${EXTEN},t,,,${DIAL_TIMEOUT})
  same => n,NoOp(Queue Status: ${QUEUESTATUS})
  same => n,Hangup()
 

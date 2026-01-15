@@ -51,6 +51,15 @@ $lang['status_completed'] = 'Завершено';
 $lang['status_failed'] = 'Ошибка';
 $lang['status_online'] = 'Онлайн';
 $lang['status_offline'] = 'Офлайн';
+$lang['status_pending'] = 'Ожидание';
+$lang['status_calling'] = 'Вызов';
+$lang['status_answered'] = 'Отвечен';
+$lang['status_no_answer'] = 'Нет ответа';
+$lang['status_busy'] = 'Занято';
+$lang['status_cancel'] = 'Отменен';
+$lang['status_chanunavail'] = 'Недоступен';
+$lang['status_congestion'] = 'Перегрузка';
+$lang['status_originate_failed'] = 'Ошибка инициации';
 
 // Messages
 $lang['msg_confirm_delete'] = 'Вы уверены, что хотите удалить этот элемент?';
