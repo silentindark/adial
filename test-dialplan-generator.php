@@ -54,22 +54,44 @@ try {
 
     // Origination context
     $dialplan .= "[dialer-origination]\n";
+    $dialplan .= "; Entry point for all campaign calls\n";
     $dialplan .= "exten => _X.,1,NoOp(Campaign Call: Campaign=\${CAMPAIGN_ID}, Number=\${NUMBER_ID})\n";
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,Set(CDR(userfield)=\${CAMPAIGN_ID}:\${NUMBER_ID})\n";
     $dialplan .= " same => n,Set(__CAMPAIGN_ID=\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,Set(__NUMBER_ID=\${NUMBER_ID})\n";
-    $dialplan .= " same => n,Set(__IVR_CONTEXT=\${IVR_CONTEXT})\n";
+    $dialplan .= " same => n,Set(__DEST_CONTEXT=\${DEST_CONTEXT})\n";
+    $dialplan .= " same => n,Set(__DEST_EXTEN=\${DEST_EXTEN})\n";
     $dialplan .= " same => n,Set(__TRUNK=\${TRUNK})\n";
+    $dialplan .= " same => n,Set(CHANNEL(language)=en)\n";
     $dialplan .= " same => n,MixMonitor(\${UNIQUEID}.wav,b)\n";
     $dialplan .= " same => n,Dial(\${TRUNK}/\${EXTEN},60,g)\n";
     $dialplan .= " same => n,NoOp(Dial Status: \${DIALSTATUS})\n";
     $dialplan .= " same => n,GotoIf(\$[\"\${DIALSTATUS}\"=\"ANSWER\"]?answered:failed)\n";
     $dialplan .= " same => n(answered),Answer()\n";
     $dialplan .= " same => n,Wait(1)\n";
-    $dialplan .= " same => n,UserEvent(CallAnswered,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID})\n";
-    $dialplan .= " same => n,Goto(\${IVR_CONTEXT},s,1)\n";
+    $dialplan .= " same => n,UserEvent(CallAnswered,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Channel:\${CHANNEL})\n";
+    $dialplan .= " same => n,Goto(\${DEST_CONTEXT},\${DEST_EXTEN},1)\n";
     $dialplan .= " same => n(failed),UserEvent(CallFailed,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${DIALSTATUS})\n";
+    $dialplan .= " same => n,Hangup()\n\n";
+
+    // Local extension dialing context
+    $dialplan .= "[dialer-local]\n";
+    $dialplan .= "; Context for dialing local extensions via LOCAL channel\n";
+    $dialplan .= "exten => _X.,1,NoOp(Dialing local extension \${EXTEN})\n";
+    $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
+    $dialplan .= " same => n,UserEvent(ExtensionDial,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Extension:\${EXTEN})\n";
+    $dialplan .= " same => n,Dial(LOCAL/\${EXTEN}@from-internal,60,g)\n";
+    $dialplan .= " same => n,NoOp(Dial Status: \${DIALSTATUS})\n";
+    $dialplan .= " same => n,Hangup()\n\n";
+
+    // Extension destination context
+    $dialplan .= "[dialer-extension]\n";
+    $dialplan .= "; Entry point for extension destination - transfers to local extension\n";
+    $dialplan .= "exten => s,1,NoOp(Extension Destination: \${DEST_VALUE})\n";
+    $dialplan .= " same => n,UserEvent(TransferToExtension,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Extension:\${DEST_VALUE})\n";
+    $dialplan .= " same => n,Dial(LOCAL/\${DEST_VALUE}@from-internal,60,g)\n";
+    $dialplan .= " same => n,NoOp(Dial Status: \${DIALSTATUS})\n";
     $dialplan .= " same => n,Hangup()\n\n";
 
     // IVR contexts
@@ -102,8 +124,9 @@ try {
 
                     switch ($type) {
                         case 'exten':
-                            $endpoint = strtoupper($channel) . '/' . $value;
-                            $dialplan .= " same => n,Dial({$endpoint},60,g)\n";
+                            // Extension transfer via LOCAL channel
+                            $dialplan .= " same => n,NoOp(Transferring to extension {$value} via LOCAL channel)\n";
+                            $dialplan .= " same => n,Dial(LOCAL/{$value}@from-internal,60,g)\n";
                             $dialplan .= " same => n,Hangup()\n";
                             break;
                         case 'queue':

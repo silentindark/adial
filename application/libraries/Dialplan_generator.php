@@ -105,7 +105,8 @@ exten => _X.,1,NoOp(Campaign Call: Campaign=${CAMPAIGN_ID}, Number=${NUMBER_ID})
  same => n,Set(CDR(userfield)=${CAMPAIGN_ID}:${NUMBER_ID})
  same => n,Set(__CAMPAIGN_ID=${CAMPAIGN_ID})
  same => n,Set(__NUMBER_ID=${NUMBER_ID})
- same => n,Set(__IVR_CONTEXT=${IVR_CONTEXT})
+ same => n,Set(__DEST_CONTEXT=${DEST_CONTEXT})
+ same => n,Set(__DEST_EXTEN=${DEST_EXTEN})
  same => n,Set(__TRUNK=${TRUNK})
  same => n,Set(CHANNEL(language)=en)
  same => n,MixMonitor(${UNIQUEID}.wav,b)
@@ -115,8 +116,25 @@ exten => _X.,1,NoOp(Campaign Call: Campaign=${CAMPAIGN_ID}, Number=${NUMBER_ID})
  same => n(answered),Answer()
  same => n,Wait(1)
  same => n,UserEvent(CallAnswered,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Channel:${CHANNEL})
- same => n,Goto(${IVR_CONTEXT},s,1)
+ same => n,Goto(${DEST_CONTEXT},${DEST_EXTEN},1)
  same => n(failed),UserEvent(CallFailed,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Status:${DIALSTATUS})
+ same => n,Hangup()
+
+[dialer-local]
+; Context for dialing local extensions via LOCAL channel
+exten => _X.,1,NoOp(Dialing local extension ${EXTEN})
+ same => n,Set(CDR(accountcode)=${CAMPAIGN_ID})
+ same => n,UserEvent(ExtensionDial,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Extension:${EXTEN})
+ same => n,Dial(LOCAL/${EXTEN}@from-internal,60,g)
+ same => n,NoOp(Dial Status: ${DIALSTATUS})
+ same => n,Hangup()
+
+[dialer-extension]
+; Entry point for extension destination - transfers to local extension
+exten => s,1,NoOp(Extension Destination: ${DEST_VALUE})
+ same => n,UserEvent(TransferToExtension,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Extension:${DEST_VALUE})
+ same => n,Dial(LOCAL/${DEST_VALUE}@from-internal,60,g)
+ same => n,NoOp(Dial Status: ${DIALSTATUS})
  same => n,Hangup()
 
 
@@ -184,10 +202,9 @@ EOT;
 
         switch ($actionType) {
             case 'exten':
-                // Extension transfer
-                $endpoint = strtoupper($channelType) . '/' . $actionValue;
-                $content .= " same => n,NoOp(Transferring to extension {$endpoint})\n";
-                $content .= " same => n,Dial({$endpoint},60,g)\n";
+                // Extension transfer via LOCAL channel
+                $content .= " same => n,NoOp(Transferring to extension {$actionValue} via LOCAL channel)\n";
+                $content .= " same => n,Dial(LOCAL/{$actionValue}@from-internal,60,g)\n";
                 $content .= " same => n,Hangup()\n";
                 break;
 

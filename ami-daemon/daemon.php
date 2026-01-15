@@ -368,6 +368,27 @@ class ADialDaemon {
             // Note: CDR records will be created automatically by Asterisk
             // with accountcode set to campaign_id for filtering
 
+            // Determine destination context and extension based on agent_dest_type
+            $destContext = 'dialer-extension';
+            $destExten = 's';
+            $destValue = $campaign['agent_dest_value'] ?? '';
+
+            switch ($campaign['agent_dest_type']) {
+                case 'ivr':
+                    $destContext = "ivr-menu-{$campaign['ivr_menu_id']}";
+                    $destExten = 's';
+                    break;
+                case 'exten':
+                    $destContext = 'dialer-extension';
+                    $destExten = 's';
+                    break;
+                case 'custom':
+                default:
+                    $destContext = 'dialer-extension';
+                    $destExten = 's';
+                    break;
+            }
+
             // Originate via AMI
             $originateParams = [
                 'Channel' => "$trunkEndpoint/$phoneNumber",
@@ -379,7 +400,9 @@ class ADialDaemon {
                 'Variable' => [
                     "CAMPAIGN_ID=$campaignId",
                     "NUMBER_ID=$numberId",
-                    "IVR_CONTEXT=ivr-menu-{$campaign['ivr_menu_id']}",
+                    "DEST_CONTEXT=$destContext",
+                    "DEST_EXTEN=$destExten",
+                    "DEST_VALUE=$destValue",
                     "TRUNK=$trunkEndpoint",
                     "RECORDINGS_PATH={$this->config['app']['recordings_path']}"
                 ],
