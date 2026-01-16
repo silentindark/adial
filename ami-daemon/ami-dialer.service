@@ -1,0 +1,19 @@
+[Unit]
+Description=A-Dial AMI Daemon
+After=network.target asterisk.service mysql.service
+Wants=asterisk.service
+
+[Service]
+Type=simple
+User=asterisk
+Group=asterisk
+WorkingDirectory=/var/www/html/adial/ami-daemon
+ExecStart=/usr/bin/php /var/www/html/adial/ami-daemon/daemon.php
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
