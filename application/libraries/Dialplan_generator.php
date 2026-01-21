@@ -121,7 +121,10 @@ exten => _X.,1,NoOp(Dialer Outbound: ${EXTEN} via ${TRUNK})
  same => n,MixMonitor(${RECORDING_PATH},b)
  same => n,Set(CDR(recordingfile)=${RECORDING_PATH})
  same => n,Dial(${TRUNK}/${EXTEN},${DIAL_TIMEOUT})
+ same => n,UserEvent(DialStatus_A,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Status:${DIALSTATUS})
+ same => n,GotoIf($["${DIALSTATUS}" != "ANSWER"]?hangup)
  same => n,Hangup()
+ same => n(hangup),Hangup()
 
 [dialer_agent]
 ; Agent destination context - dials agent extension using CHANNEL_TYPE
@@ -134,7 +137,7 @@ exten => _X.,1,NoOp(Dialer Agent: Connecting to ${CHANNEL_TYPE}/${EXTEN})
  same => n,Set(CALL_TIMEOUT_MS=$[${CALL_TIMEOUT}*1000])
  same => n,UserEvent(AgentConnect,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Agent:${EXTEN},ChannelType:${CHANNEL_TYPE})
  same => n,Dial(${CHANNEL_TYPE}/${EXTEN},${DIAL_TIMEOUT},L(${CALL_TIMEOUT_MS}))
- same => n,NoOp(Agent Dial Status: ${DIALSTATUS})
+ same => n,UserEvent(DialStatus_B,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Status:${DIALSTATUS},Dest:${EXTEN})
  same => n,Hangup()
 
 [dialer_queue]
@@ -148,7 +151,7 @@ exten => _X.,1,NoOp(Dialer Queue: Adding to queue ${EXTEN})
  same => n,Set(TIMEOUT(absolute)=${CALL_TIMEOUT})
  same => n,UserEvent(QueueConnect,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Queue:${EXTEN})
  same => n,Queue(${EXTEN},t,,,${DIAL_TIMEOUT})
- same => n,NoOp(Queue Status: ${QUEUESTATUS})
+ same => n,UserEvent(DialStatus_B,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Status:${QUEUESTATUS},Dest:${EXTEN})
  same => n,Hangup()
 
 
@@ -222,6 +225,7 @@ EOT;
                 // Extension transfer via LOCAL channel
                 $content .= " same => n,NoOp(Transferring to extension {$actionValue} via LOCAL channel)\n";
                 $content .= " same => n,Dial(LOCAL/{$actionValue}@from-internal,60,g)\n";
+                $content .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${DIALSTATUS},Dest:{$actionValue})\n";
                 $content .= " same => n,Hangup()\n";
                 break;
 
@@ -229,6 +233,7 @@ EOT;
                 // Queue transfer
                 $content .= " same => n,NoOp(Transferring to queue {$actionValue})\n";
                 $content .= " same => n,Queue({$actionValue},t,,,60)\n";
+                $content .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${QUEUESTATUS},Dest:{$actionValue})\n";
                 $content .= " same => n,Hangup()\n";
                 break;
 

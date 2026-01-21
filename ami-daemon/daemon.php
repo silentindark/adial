@@ -621,6 +621,33 @@ class ADialDaemon {
 
                     $this->logger->info("IVR Action: Number $numberId pressed $digit (action: $action)");
                     break;
+
+                case 'DialStatus_A':
+                    // Status of outbound call to customer (trunk dial result)
+                    $campaignId = $event['Campaign'] ?? null;
+                    $numberId = $event['Number'] ?? null;
+                    $status = strtolower($event['Status'] ?? 'unknown');
+
+                    if ($numberId) {
+                        $stmt = $this->db->prepare("UPDATE campaign_numbers SET status_a = ? WHERE id = ?");
+                        $stmt->execute([$status, $numberId]);
+                        $this->logger->info("StatusA updated: Campaign $campaignId, Number $numberId, Status: $status");
+                    }
+                    break;
+
+                case 'DialStatus_B':
+                    // Status of connection to agent/IVR/queue
+                    $campaignId = $event['Campaign'] ?? null;
+                    $numberId = $event['Number'] ?? null;
+                    $status = strtolower($event['Status'] ?? 'unknown');
+                    $dest = $event['Dest'] ?? null;
+
+                    if ($numberId) {
+                        $stmt = $this->db->prepare("UPDATE campaign_numbers SET status_b = ? WHERE id = ?");
+                        $stmt->execute([$status, $numberId]);
+                        $this->logger->info("StatusB updated: Campaign $campaignId, Number $numberId, Dest: $dest, Status: $status");
+                    }
+                    break;
             }
 
         } catch (PDOException $e) {

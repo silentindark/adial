@@ -213,6 +213,8 @@
                                     <th>Phone Number</th>
                                     <th>Name</th>
                                     <th>Status</th>
+                                    <th>Status A</th>
+                                    <th>Status B</th>
                                     <th>Attempts</th>
                                     <th>Last Attempt</th>
                                     <th>Actions</th>
@@ -250,6 +252,30 @@
                                                     <?php echo ucfirst(str_replace('_', ' ', $number->status)); ?>
                                                 </span>
                                             </td>
+                                            <td>
+                                                <?php if (!empty($number->status_a)): ?>
+                                                    <?php
+                                                    $status_a_class = ($number->status_a == 'answer') ? 'success' : 'secondary';
+                                                    ?>
+                                                    <span class="badge badge-<?php echo $status_a_class; ?>">
+                                                        <?php echo strtoupper($number->status_a); ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if (!empty($number->status_b)): ?>
+                                                    <?php
+                                                    $status_b_class = ($number->status_b == 'answer') ? 'success' : 'secondary';
+                                                    ?>
+                                                    <span class="badge badge-<?php echo $status_b_class; ?>">
+                                                        <?php echo strtoupper($number->status_b); ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?php echo $number->attempts; ?></td>
                                             <td><?php echo $number->last_attempt ? date('Y-m-d H:i:s', strtotime($number->last_attempt)) : '-'; ?></td>
                                             <td>
@@ -261,7 +287,7 @@
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="7" class="text-center py-5">
+                                        <td colspan="9" class="text-center py-5">
                                             <div class="text-muted">
                                                 <i class="fas fa-list-ol fa-3x mb-3"></i>
                                                 <h5>No numbers added yet</h5>

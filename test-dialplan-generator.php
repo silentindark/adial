@@ -76,7 +76,10 @@ try {
     $dialplan .= " same => n,MixMonitor(\${RECORDING_PATH},b)\n";
     $dialplan .= " same => n,Set(CDR(recordingfile)=\${RECORDING_PATH})\n";
     $dialplan .= " same => n,Dial(\${TRUNK}/\${EXTEN},\${DIAL_TIMEOUT})\n";
-    $dialplan .= " same => n,Hangup()\n\n";
+    $dialplan .= " same => n,UserEvent(DialStatus_A,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${DIALSTATUS})\n";
+    $dialplan .= " same => n,GotoIf(\$[\"\${DIALSTATUS}\" != \"ANSWER\"]?hangup)\n";
+    $dialplan .= " same => n,Hangup()\n";
+    $dialplan .= " same => n(hangup),Hangup()\n\n";
 
     // Agent destination context
     $dialplan .= "[dialer_agent]\n";
@@ -90,7 +93,7 @@ try {
     $dialplan .= " same => n,Set(CALL_TIMEOUT_MS=\$[\${CALL_TIMEOUT}*1000])\n";
     $dialplan .= " same => n,UserEvent(AgentConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Agent:\${EXTEN},ChannelType:\${CHANNEL_TYPE})\n";
     $dialplan .= " same => n,Dial(\${CHANNEL_TYPE}/\${EXTEN},\${DIAL_TIMEOUT},L(\${CALL_TIMEOUT_MS}))\n";
-    $dialplan .= " same => n,NoOp(Agent Dial Status: \${DIALSTATUS})\n";
+    $dialplan .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${DIALSTATUS},Dest:\${EXTEN})\n";
     $dialplan .= " same => n,Hangup()\n\n";
 
     // Queue destination context
@@ -105,7 +108,7 @@ try {
     $dialplan .= " same => n,Set(TIMEOUT(absolute)=\${CALL_TIMEOUT})\n";
     $dialplan .= " same => n,UserEvent(QueueConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Queue:\${EXTEN})\n";
     $dialplan .= " same => n,Queue(\${EXTEN},t,,,\${DIAL_TIMEOUT})\n";
-    $dialplan .= " same => n,NoOp(Queue Status: \${QUEUESTATUS})\n";
+    $dialplan .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${QUEUESTATUS},Dest:\${EXTEN})\n";
     $dialplan .= " same => n,Hangup()\n\n";
 
     // IVR contexts
@@ -144,10 +147,12 @@ try {
                             // Extension transfer via LOCAL channel
                             $dialplan .= " same => n,NoOp(Transferring to extension {$value} via LOCAL channel)\n";
                             $dialplan .= " same => n,Dial(LOCAL/{$value}@from-internal,60,g)\n";
+                            $dialplan .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${DIALSTATUS},Dest:{$value})\n";
                             $dialplan .= " same => n,Hangup()\n";
                             break;
                         case 'queue':
                             $dialplan .= " same => n,Queue({$value},t,,,60)\n";
+                            $dialplan .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${QUEUESTATUS},Dest:{$value})\n";
                             $dialplan .= " same => n,Hangup()\n";
                             break;
                         case 'goto_ivr':
