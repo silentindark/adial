@@ -167,6 +167,11 @@ class ADialDaemon {
             $this->handleNewchannelEvent($event);
         });
 
+        // DialEnd - track dial completion status
+        $this->ami->on('DialEnd', function($event) {
+            $this->handleDialEndEvent($event);
+        });
+
         $this->logger->info("AMI event handlers registered");
     }
 
@@ -671,6 +676,126 @@ class ADialDaemon {
         // Store uniqueid in CDR for tracking
         // Try to find CDR by campaign variables (if available in event)
         // This is a bit tricky with AMI - we'll update on hangup instead
+    }
+
+    /**
+     * Handle DialEnd event - capture StatusA (trunk dial) and StatusB (agent dial)
+     */
+    private function handleDialEndEvent($event) {
+        $channel = $event['Channel'] ?? null;
+        $destChannel = $event['DestChannel'] ?? null;
+        $dialStatus = $event['DialStatus'] ?? null;
+        $context = $event['Context'] ?? null;
+        $accountCode = $event['AccountCode'] ?? null;
+
+        if (!$dialStatus) {
+            return;
+        }
+
+        // Handle StatusA: trunk dial from dialer_out context
+        if ($context === 'dialer_out') {
+            // Check if this is a trunk channel (SIP/xxx or PJSIP/xxx, not LOCAL)
+            if (!$destChannel || strpos($destChannel, 'Local/') === 0) {
+                return;
+            }
+
+            $campaignId = $accountCode;
+            if (!$campaignId) {
+                return;
+            }
+
+            // Try to extract phone number from channel name: Local/79167193249@dialer_out-00000123;1
+            $phoneNumber = null;
+            if ($channel && preg_match('/Local\/(\d+)@/', $channel, $matches)) {
+                $phoneNumber = $matches[1];
+            }
+
+            try {
+                // Find the number by phone_number if available, otherwise by campaign/status
+                if ($phoneNumber) {
+                    $stmt = $this->db->prepare("
+                        SELECT id FROM campaign_numbers
+                        WHERE campaign_id = ? AND phone_number = ?
+                        ORDER BY last_attempt DESC LIMIT 1
+                    ");
+                    $stmt->execute([$campaignId, $phoneNumber]);
+                } else {
+                    $stmt = $this->db->prepare("
+                        SELECT id FROM campaign_numbers
+                        WHERE campaign_id = ? AND status = 'dialing'
+                        ORDER BY last_attempt DESC LIMIT 1
+                    ");
+                    $stmt->execute([$campaignId]);
+                }
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($row) {
+                    $numberId = $row['id'];
+                    $status = strtolower($dialStatus);
+
+                    $stmt = $this->db->prepare("UPDATE campaign_numbers SET status_a = ? WHERE id = ?");
+                    $stmt->execute([$status, $numberId]);
+
+                    $this->logger->info("StatusA updated from DialEnd: Campaign $campaignId, Number $numberId, Phone: $phoneNumber, Status: $status");
+                }
+            } catch (PDOException $e) {
+                $this->logger->error("Failed to update StatusA from DialEnd: " . $e->getMessage());
+            }
+            return;
+        }
+
+        // Handle StatusB: agent/queue dial from dialer_agent or dialer_queue context
+        if ($context === 'dialer_agent' || $context === 'dialer_queue') {
+            // Check if this is an agent channel (SIP/xxx or PJSIP/xxx)
+            if (!$destChannel || strpos($destChannel, 'Local/') === 0) {
+                return;
+            }
+
+            $campaignId = $accountCode;
+            if (!$campaignId) {
+                return;
+            }
+
+            // Try to extract phone number from channel name: Local/79167193249@dialer_out-00000123;2
+            $phoneNumber = null;
+            if ($channel && preg_match('/Local\/(\d+)@/', $channel, $matches)) {
+                $phoneNumber = $matches[1];
+            }
+
+            try {
+                // Find the number by phone_number if available, otherwise by campaign
+                if ($phoneNumber) {
+                    $stmt = $this->db->prepare("
+                        SELECT id FROM campaign_numbers
+                        WHERE campaign_id = ? AND phone_number = ?
+                        ORDER BY last_attempt DESC LIMIT 1
+                    ");
+                    $stmt->execute([$campaignId, $phoneNumber]);
+                } else {
+                    $stmt = $this->db->prepare("
+                        SELECT id FROM campaign_numbers
+                        WHERE campaign_id = ? AND (status = 'dialing' OR status_a IS NOT NULL)
+                        ORDER BY last_attempt DESC LIMIT 1
+                    ");
+                    $stmt->execute([$campaignId]);
+                }
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($row) {
+                    $numberId = $row['id'];
+                    $status = strtolower($dialStatus);
+                    $dest = $destChannel;
+
+                    $stmt = $this->db->prepare("UPDATE campaign_numbers SET status_b = ? WHERE id = ?");
+                    $stmt->execute([$status, $numberId]);
+
+                    $this->logger->info("StatusB updated from DialEnd: Campaign $campaignId, Number $numberId, Phone: $phoneNumber, Dest: $dest, Status: $status");
+                }
+            } catch (PDOException $e) {
+                $this->logger->error("Failed to update StatusB from DialEnd: " . $e->getMessage());
+            }
+            return;
+        }
     }
 
     /**
