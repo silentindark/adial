@@ -152,6 +152,9 @@ try {
                             $dialplan .= " same => n,Hangup()\n";
                             break;
                         case 'queue':
+                            $dialplan .= " same => n,Set(__NODEST={$value})\n";
+                            $dialplan .= " same => n,Set(QAGENT={$value})\n";
+                            $dialplan .= " same => n,Set(__FROMQ=true)\n";
                             $dialplan .= " same => n,Queue({$value},t,,,60)\n";
                             $dialplan .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${QUEUESTATUS},Dest:{$value})\n";
                             $dialplan .= " same => n,Hangup()\n";

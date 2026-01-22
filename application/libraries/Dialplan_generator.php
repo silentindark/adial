@@ -235,6 +235,9 @@ EOT;
             case 'queue':
                 // Queue transfer
                 $content .= " same => n,NoOp(Transferring to queue {$actionValue})\n";
+                $content .= " same => n,Set(__NODEST={$actionValue})\n";
+                $content .= " same => n,Set(QAGENT={$actionValue})\n";
+                $content .= " same => n,Set(__FROMQ=true)\n";
                 $content .= " same => n,Queue({$actionValue},t,,,60)\n";
                 $content .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${QUEUESTATUS},Dest:{$actionValue})\n";
                 $content .= " same => n,Hangup()\n";
