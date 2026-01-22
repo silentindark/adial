@@ -518,29 +518,38 @@ class ADialDaemon {
      */
     private function handleHangupEvent($event) {
         $uniqueid = $event['Uniqueid'] ?? null;
+        $channel = $event['Channel'] ?? null;
         $cause = $event['Cause'] ?? null;
         $causeText = $event['Cause-txt'] ?? null;
 
-        if (!$uniqueid) {
+        if (!$uniqueid || !$channel) {
             return;
         }
 
-        // Try to extract campaign and number IDs from channel variables
-        // In practice, we'll track by looking up the channel in our database
-        // For now, update based on active calls tracking
+        // Only process the ;1 leg of LOCAL channels (main outbound leg)
+        // This prevents double-counting when both legs hang up
+        if (strpos($channel, 'Local/') === 0 && strpos($channel, ';1') === false) {
+            $this->logger->debug("Ignoring Hangup for non-;1 LOCAL leg: $channel");
+            return;
+        }
 
-        $this->logger->debug("Hangup event: UniqueID=$uniqueid, Cause=$cause ($causeText)");
+        // Extract phone number from channel: Local/79167193249@dialer_out-xxx;1
+        $phoneNumber = null;
+        if (preg_match('/Local\/(\d+)@/', $channel, $matches)) {
+            $phoneNumber = $matches[1];
+        }
 
-        // Find the call in activeCalls by uniqueid
-        // Note: Asterisk will handle CDR records automatically
+        $this->logger->debug("Hangup event: Channel=$channel, UniqueID=$uniqueid, Cause=$cause ($causeText), Phone=$phoneNumber");
+
+        // Find the call in activeCalls by phone number
         $campaignId = null;
         $numberId = null;
 
-        // Find in our tracking
+        // Find in our tracking by phone number
         foreach ($this->activeCalls as $cid => $calls) {
             foreach ($calls as $call) {
-                // Match by phone number and recent timestamp (within last 2 minutes)
-                if (isset($call['started_at']) && (time() - $call['started_at']) < 120) {
+                // Match by phone number (primary) or timestamp as fallback
+                if ($phoneNumber && isset($call['phone_number']) && $call['phone_number'] === $phoneNumber) {
                     $campaignId = $cid;
                     $numberId = $call['number_id'];
                     break 2;
@@ -549,7 +558,7 @@ class ADialDaemon {
         }
 
         if (!$campaignId || !$numberId) {
-            $this->logger->debug("Hangup event for unknown call: $uniqueid");
+            $this->logger->debug("Hangup event for unknown call: $channel ($uniqueid)");
             return;
         }
 
