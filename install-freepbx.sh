@@ -120,7 +120,7 @@ echo "================================"
 AMI_PASSWORD=$(openssl rand -base64 16)
 
 # Create AMI user configuration
-cat > /etc/asterisk/manager_custom.conf <<EOF
+cat >> /etc/asterisk/manager_custom.conf <<EOF
 ; A-Dial AMI User
 [dialer]
 secret = $AMI_PASSWORD
@@ -328,7 +328,7 @@ echo "Step 6: File Permissions"
 echo "================================"
 
 # Set ownership
-chown -R apache:apache "$INSTALL_DIR"
+chown -R asterisk:asterisk "$INSTALL_DIR"
 chown -R asterisk:asterisk "$INSTALL_DIR/ami-daemon"
 chmod +x "$INSTALL_DIR/ami-daemon/start-daemon.sh"
 chmod +x "$INSTALL_DIR/ami-daemon/stop-daemon.sh"
