@@ -343,7 +343,7 @@ echo "Step 7: Systemd Service"
 echo "================================"
 
 # Create systemd service
-cat > /etc/systemd/system/adial-ami.service <<EOF
+cat > /etc/systemd/system/ami-dialer.service <<EOF
 [Unit]
 Description=A-Dial AMI Daemon
 After=network.target asterisk.service mysql.service
@@ -361,7 +361,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable adial-ami.service
+systemctl enable ami-dialer.service
 
 echo -e "${GREEN}✓ Systemd service created and enabled${NC}"
 
@@ -409,10 +409,10 @@ echo "Step 10: Start Services"
 echo "================================"
 
 # Start AMI daemon
-systemctl start adial-ami.service
+systemctl start ami-dialer.service
 sleep 2
 
-if systemctl is-active --quiet adial-ami.service; then
+if systemctl is-active --quiet ami-dialer.service; then
     echo -e "${GREEN}✓ AMI daemon started successfully${NC}"
 else
     echo -e "${RED}✗ Failed to start AMI daemon${NC}"
@@ -445,9 +445,9 @@ echo "  Recordings: $RECORDINGS_DIR"
 echo "  Logs: $INSTALL_DIR/logs"
 echo ""
 echo "Services:"
-echo "  Start: systemctl start adial-ami"
-echo "  Stop: systemctl stop adial-ami"
-echo "  Status: systemctl status adial-ami"
+echo "  Start: systemctl start ami-dialer"
+echo "  Stop: systemctl stop ami-dialer"
+echo "  Status: systemctl status ami-dialer"
 echo "  Logs: tail -f $INSTALL_DIR/logs/ami-daemon.log"
 echo ""
 echo "Web Interface:"
@@ -464,7 +464,7 @@ echo ""
 echo "Documentation:"
 echo "  Logs: $INSTALL_DIR/logs/ami-daemon.log"
 echo "  Asterisk CLI: asterisk -rvvv"
-echo "  Daemon Status: systemctl status adial-ami"
+echo "  Daemon Status: systemctl status ami-dialer"
 echo ""
 echo "IMPORTANT: Save the credentials above to a secure location!"
 echo ""

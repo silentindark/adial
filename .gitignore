@@ -31,12 +31,20 @@ user_guide_src/cilexer/pycilexer.egg-info/*
 /tests/tests/
 /tests/results/
 
-# ARI Dialer specific
+# A-Dial specific
 #-------------------------
 # Logs
 logs/*
 !logs/.htaccess
 *.log
+
+# Daemon runtime files
+ami-daemon/daemon.pid
+ami-daemon/config.php
+
+# Config files (contain passwords)
+application/config/database.php
+application/config/asterisk.php
 
 # User uploads and recordings
 uploads/*
@@ -46,12 +54,7 @@ recordings/*
 
 # Sensitive environment files
 .env
-stasis-app/.env
 .credentials
-
-# Node modules
-stasis-app/node_modules/
-stasis-app/package-lock.json
 
 # Backup files
 *.bak

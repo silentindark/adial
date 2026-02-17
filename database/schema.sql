@@ -52,7 +52,9 @@ CREATE TABLE `campaign_numbers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `campaign_id` int(11) NOT NULL,
   `phone_number` varchar(50) NOT NULL,
-  `status` enum('pending','calling','answered','failed','no_answer','busy','cancel','chanunavail','congestion','originate_failed') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','calling','dialing','answered','failed','no_answer','busy','cancel','chanunavail','congestion','originate_failed') NOT NULL DEFAULT 'pending',
+  `status_a` varchar(50) DEFAULT NULL COMMENT 'Trunk dial status (customer answer)',
+  `status_b` varchar(50) DEFAULT NULL COMMENT 'Agent/Queue dial status',
   `attempts` int(11) NOT NULL DEFAULT '0',
   `last_attempt` timestamp NULL DEFAULT NULL,
   `data` text COMMENT 'Additional JSON data for the number',
@@ -63,7 +65,7 @@ CREATE TABLE `campaign_numbers` (
   KEY `status` (`status`),
   KEY `phone_number` (`phone_number`),
   CONSTRAINT `campaign_numbers_ibfk_1` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -93,7 +95,7 @@ CREATE TABLE `campaigns` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -151,7 +153,7 @@ CREATE TABLE `ivr_actions` (
   UNIQUE KEY `unique_menu_dtmf` (`ivr_menu_id`,`dtmf_digit`),
   KEY `ivr_menu_id` (`ivr_menu_id`),
   CONSTRAINT `ivr_actions_ibfk_1` FOREIGN KEY (`ivr_menu_id`) REFERENCES `ivr_menus` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -173,7 +175,7 @@ CREATE TABLE `ivr_menus` (
   PRIMARY KEY (`id`),
   KEY `campaign_id` (`campaign_id`),
   CONSTRAINT `ivr_menus_ibfk_1` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE SET NULL
-)ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -212,7 +214,7 @@ CREATE TABLE `settings` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -236,7 +238,7 @@ CREATE TABLE `users` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
