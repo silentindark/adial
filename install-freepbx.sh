@@ -200,7 +200,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 // Main A-Dial database
 \$db['default'] = array(
     'dsn'   => '',
-    'hostname' => '127.0.0.1',
+    'hostname' => 'localhost',
     'username' => 'adialer_user',
     'password' => '$DB_PASSWORD',
     'database' => 'adialer',
@@ -224,7 +224,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 // NOTE: Update password to match your FreePBX installation
 \$db['asteriskcdr'] = array(
     'dsn'   => '',
-    'hostname' => '127.0.0.1',
+    'hostname' => 'localhost',
     'username' => 'freepbxuser',
     'password' => 'CHANGE_ME',
     'database' => 'asteriskcdrdb',
@@ -257,7 +257,7 @@ cat > "$INSTALL_DIR/ami-daemon/config.php" <<EOF
 return [
     // Asterisk AMI Configuration
     'ami' => [
-        'host' => '127.0.0.1',
+        'host' => 'localhost',
         'port' => 5038,
         'username' => 'dialer',
         'password' => '$AMI_PASSWORD',
@@ -267,7 +267,7 @@ return [
 
     // MySQL Database Configuration
     'database' => [
-        'host' => '127.0.0.1',
+        'host' => 'localhost',
         'port' => 3306,
         'username' => 'adialer_user',
         'password' => '$DB_PASSWORD',
@@ -277,7 +277,7 @@ return [
 
     // Asterisk CDR Database Configuration
     'cdr_database' => [
-        'host' => '127.0.0.1',
+        'host' => 'localhost',
         'port' => 3306,
         'username' => 'freepbxuser',
         'password' => 'CHANGE_ME',
