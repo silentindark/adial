@@ -25,7 +25,7 @@ class AmiClient {
      * Connect to AMI and login
      */
     public function connect() {
-        $this->socket = fsockopen($this->host, $this->port, $errno, $errstr, 10);
+        $this->socket = @fsockopen($this->host, $this->port, $errno, $errstr, 10);
 
         if (!$this->socket) {
             throw new Exception("Failed to connect to AMI: $errstr ($errno)");
@@ -55,10 +55,42 @@ class AmiClient {
     }
 
     /**
+     * Reconnect to AMI
+     */
+    public function reconnect() {
+        $this->logger->warning("AMI connection lost, attempting reconnect...");
+
+        // Close old socket
+        if ($this->socket) {
+            @fclose($this->socket);
+            $this->socket = null;
+        }
+        $this->connected = false;
+
+        try {
+            $this->connect();
+            $this->logger->info("AMI reconnected successfully");
+            return true;
+        } catch (Exception $e) {
+            $this->logger->error("AMI reconnect failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Check if connected
      */
     public function isConnected() {
-        return $this->connected && $this->socket && !feof($this->socket);
+        if (!$this->connected || !$this->socket) {
+            return false;
+        }
+
+        if (feof($this->socket)) {
+            $this->connected = false;
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -66,8 +98,9 @@ class AmiClient {
      */
     public function disconnect() {
         if ($this->socket) {
-            $this->sendAction(['Action' => 'Logoff']);
-            fclose($this->socket);
+            @$this->sendAction(['Action' => 'Logoff']);
+            @fclose($this->socket);
+            $this->socket = null;
             $this->connected = false;
             $this->logger->info("Disconnected from AMI");
         }
@@ -75,15 +108,28 @@ class AmiClient {
 
     /**
      * Send an action to AMI
+     * Returns false if write fails (broken pipe)
      */
     private function sendAction($params) {
+        if (!$this->socket) {
+            return false;
+        }
+
         $message = '';
         foreach ($params as $key => $value) {
             $message .= "$key: $value\r\n";
         }
         $message .= "\r\n";
 
-        fwrite($this->socket, $message);
+        $result = @fwrite($this->socket, $message);
+
+        if ($result === false) {
+            $this->connected = false;
+            $this->logger->error("AMI write failed (broken pipe)");
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -95,7 +141,7 @@ class AmiClient {
         $timeout = 5; // 5 seconds timeout
 
         while ((microtime(true) - $startTime) < $timeout) {
-            $line = fgets($this->socket);
+            $line = @fgets($this->socket);
             if ($line === false) {
                 usleep(10000); // 10ms
                 continue;
@@ -121,7 +167,9 @@ class AmiClient {
         // Log the full Originate action being sent
         $this->logger->info("AMI Originate Action:", $action);
 
-        $this->sendAction($action);
+        if (!$this->sendAction($action)) {
+            return ['Response' => 'Error', 'Message' => 'AMI connection lost'];
+        }
 
         $response = $this->readResponse();
 
@@ -174,11 +222,15 @@ class AmiClient {
      * Read an event from AMI (non-blocking)
      */
     private function readEvent() {
+        if (!$this->socket) {
+            return null;
+        }
+
         $event = '';
         $lines = 0;
 
         while (true) {
-            $line = fgets($this->socket);
+            $line = @fgets($this->socket);
 
             if ($line === false) {
                 // No data available
@@ -262,6 +314,8 @@ class AmiClient {
      * Send ping to keep connection alive
      */
     public function ping() {
-        $this->sendAction(['Action' => 'Ping']);
+        if (!$this->sendAction(['Action' => 'Ping'])) {
+            $this->connected = false;
+        }
     }
 }

@@ -190,6 +190,16 @@ class ADialDaemon {
                     pcntl_signal_dispatch();
                 }
 
+                // Check AMI connection, reconnect if needed
+                if (!$this->ami->isConnected()) {
+                    $this->logger->warning("AMI connection lost, reconnecting...");
+                    if (!$this->ami->reconnect()) {
+                        sleep(5);
+                        continue;
+                    }
+                    $lastPing = time();
+                }
+
                 // Process AMI events (non-blocking)
                 $this->ami->processEvents();
 
