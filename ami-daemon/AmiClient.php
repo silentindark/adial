@@ -12,6 +12,7 @@ class AmiClient {
     private $connected = false;
     private $eventCallbacks = [];
     private $logger;
+    private $actionIdCounter = 0;
 
     public function __construct($host, $port, $username, $password, $logger) {
         $this->host = $host;
@@ -29,6 +30,14 @@ class AmiClient {
 
         if (!$this->socket) {
             throw new Exception("Failed to connect to AMI: $errstr ($errno)");
+        }
+
+        // Enable TCP keepalive to prevent firewall/NAT from dropping idle connections
+        if (function_exists('socket_import_stream')) {
+            $rawSocket = socket_import_stream($this->socket);
+            if ($rawSocket) {
+                socket_set_option($rawSocket, SOL_SOCKET, SO_KEEPALIVE, 1);
+            }
         }
 
         stream_set_blocking($this->socket, false);
@@ -123,13 +132,21 @@ class AmiClient {
 
         $result = @fwrite($this->socket, $message);
 
-        if ($result === false) {
+        if ($result === false || $result === 0) {
             $this->connected = false;
             $this->logger->error("AMI write failed (broken pipe)");
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Generate unique ActionID
+     */
+    private function generateActionId() {
+        $this->actionIdCounter++;
+        return 'adial-' . getmypid() . '-' . $this->actionIdCounter;
     }
 
     /**
@@ -159,10 +176,51 @@ class AmiClient {
     }
 
     /**
+     * Read response matching a specific ActionID, processing events along the way
+     */
+    private function readResponseForAction($actionId) {
+        $startTime = microtime(true);
+        $timeout = 5; // 5 seconds timeout
+        $buffer = '';
+
+        while ((microtime(true) - $startTime) < $timeout) {
+            $line = @fgets($this->socket);
+            if ($line === false) {
+                usleep(10000); // 10ms
+                continue;
+            }
+
+            $buffer .= $line;
+
+            // Check for end of a message block
+            if (trim($line) === '' || strpos($buffer, "\r\n\r\n") !== false) {
+                $parsed = $this->parseEvent(trim($buffer));
+
+                // Check if this is our response (matching ActionID)
+                if (isset($parsed['ActionID']) && $parsed['ActionID'] === $actionId) {
+                    return $parsed;
+                }
+
+                // If it's an event, process it
+                if (isset($parsed['Event'])) {
+                    $this->handleEvent($parsed);
+                }
+
+                // Reset buffer for next message
+                $buffer = '';
+            }
+        }
+
+        // Timeout - return empty result
+        return [];
+    }
+
+    /**
      * Originate a call
      */
     public function originate($params) {
-        $action = array_merge(['Action' => 'Originate'], $params);
+        $actionId = $this->generateActionId();
+        $action = array_merge(['Action' => 'Originate', 'ActionID' => $actionId], $params);
 
         // Log the full Originate action being sent
         $this->logger->info("AMI Originate Action:", $action);
@@ -171,24 +229,10 @@ class AmiClient {
             return ['Response' => 'Error', 'Message' => 'AMI connection lost'];
         }
 
-        $response = $this->readResponse();
+        // Read response matching our ActionID, processing events along the way
+        $result = $this->readResponseForAction($actionId);
 
-        $this->logger->info("AMI Originate Response: " . trim($response));
-
-        // Parse response for ActionID or Uniqueid
-        $lines = explode("\n", $response);
-        $result = [];
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) continue;
-
-            $parts = explode(':', $line, 2);
-            if (count($parts) == 2) {
-                $key = trim($parts[0]);
-                $value = trim($parts[1]);
-                $result[$key] = $value;
-            }
-        }
+        $this->logger->info("AMI Originate Response:", $result);
 
         return $result;
     }
@@ -211,10 +255,19 @@ class AmiClient {
             return;
         }
 
-        $event = $this->readEvent();
+        // Process multiple events per cycle to avoid falling behind
+        $maxEvents = 50;
+        $processed = 0;
 
-        if ($event) {
+        while ($processed < $maxEvents) {
+            $event = $this->readEvent();
+
+            if (!$event) {
+                break;
+            }
+
             $this->handleEvent($event);
+            $processed++;
         }
     }
 
@@ -240,7 +293,7 @@ class AmiClient {
             $event .= $line;
             $lines++;
 
-            // Events end with double CRLF or single CRLF for some event types
+            // Events end with empty line
             if (trim($line) === '' || strpos($event, "\r\n\r\n") !== false) {
                 break;
             }

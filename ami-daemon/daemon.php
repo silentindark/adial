@@ -219,8 +219,8 @@ class ADialDaemon {
                     }
                 }
 
-                // Keep connection alive
-                if (time() - $lastPing > 30) {
+                // Keep connection alive (every 15s to prevent firewall/NAT idle timeout)
+                if (time() - $lastPing > 15) {
                     $this->ami->ping();
                     $lastPing = time();
                 }
